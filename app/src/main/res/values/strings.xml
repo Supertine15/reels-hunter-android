@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">ReelsHunter</string>
+    <string name="accessibility_service_name">ReelsHunter Auto-Scroll Service</string>
+    <string name="accessibility_service_description">ReelsHunter automated screen scroller service to perform gesture swipes and auto-scroll feeds safely on short-form video apps.</string>
+</resources>
+

@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.model.ScrollSettings
 import com.example.model.SwipeDirection
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class AppPreferences(context: Context) {
     private val prefs: SharedPreferences =
@@ -20,19 +23,69 @@ class AppPreferences(context: Context) {
         private const val KEY_AUTO_STOP = "auto_stop_minutes"
         private const val KEY_PERMISSIONS_COMPLETED = "permissions_completed"
         private const val KEY_DARK_THEME = "is_dark_theme"
+
+        // Global StateFlows for real-time inter-process and inter-component state synchronization
+        private val _intervalFlow = MutableStateFlow(ScrollSettings.DEFAULT_INTERVAL)
+        val intervalFlow: StateFlow<Int> = _intervalFlow.asStateFlow()
+
+        private val _standbyFlow = MutableStateFlow(true)
+        val standbyFlow: StateFlow<Boolean> = _standbyFlow.asStateFlow()
+
+        private val _directionFlow = MutableStateFlow(SwipeDirection.UP)
+        val directionFlow: StateFlow<SwipeDirection> = _directionFlow.asStateFlow()
+
+        private val _keepDefaultFlow = MutableStateFlow(true)
+        val keepDefaultFlow: StateFlow<Boolean> = _keepDefaultFlow.asStateFlow()
+
+        private val _autoStopFlow = MutableStateFlow(ScrollSettings.DEFAULT_AUTO_STOP_MINUTES)
+        val autoStopFlow: StateFlow<Int> = _autoStopFlow.asStateFlow()
     }
+
+    private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        when (key) {
+            KEY_INTERVAL -> _intervalFlow.value = intervalSeconds
+            KEY_STANDBY -> _standbyFlow.value = isStandbyEnabled
+            KEY_DIRECTION -> _directionFlow.value = swipeDirection
+            KEY_KEEP_DEFAULT -> _keepDefaultFlow.value = keepAsDefault
+            KEY_AUTO_STOP -> _autoStopFlow.value = autoStopMinutes
+        }
+    }
+
+    init {
+        _intervalFlow.value = intervalSeconds
+        _standbyFlow.value = isStandbyEnabled
+        _directionFlow.value = swipeDirection
+        _keepDefaultFlow.value = keepAsDefault
+        _autoStopFlow.value = autoStopMinutes
+        prefs.registerOnSharedPreferenceChangeListener(preferenceChangeListener)
+    }
+
+    val intervalFlow: StateFlow<Int> get() = Companion.intervalFlow
+    val standbyFlow: StateFlow<Boolean> get() = Companion.standbyFlow
+    val directionFlow: StateFlow<SwipeDirection> get() = Companion.directionFlow
+    val keepDefaultFlow: StateFlow<Boolean> get() = Companion.keepDefaultFlow
+    val autoStopFlow: StateFlow<Int> get() = Companion.autoStopFlow
 
     var isStandbyEnabled: Boolean
         get() = prefs.getBoolean(KEY_STANDBY, true)
-        set(value) = prefs.edit().putBoolean(KEY_STANDBY, value).apply()
+        set(value) {
+            prefs.edit().putBoolean(KEY_STANDBY, value).apply()
+            _standbyFlow.value = value
+        }
 
     var keepAsDefault: Boolean
         get() = prefs.getBoolean(KEY_KEEP_DEFAULT, true)
-        set(value) = prefs.edit().putBoolean(KEY_KEEP_DEFAULT, value).apply()
+        set(value) {
+            prefs.edit().putBoolean(KEY_KEEP_DEFAULT, value).apply()
+            _keepDefaultFlow.value = value
+        }
 
     var intervalSeconds: Int
         get() = prefs.getInt(KEY_INTERVAL, ScrollSettings.DEFAULT_INTERVAL)
-        set(value) = prefs.edit().putInt(KEY_INTERVAL, value).apply()
+        set(value) {
+            prefs.edit().putInt(KEY_INTERVAL, value).apply()
+            _intervalFlow.value = value
+        }
 
     var swipeDurationMs: Long
         get() = prefs.getLong(KEY_DURATION, ScrollSettings.DEFAULT_DURATION_MS)
@@ -58,8 +111,11 @@ class AppPreferences(context: Context) {
         set(value) = prefs.edit().putString(KEY_DIRECTION, value.name).apply()
 
     var autoStopMinutes: Int
-        get() = prefs.getInt(KEY_AUTO_STOP, 0)
-        set(value) = prefs.edit().putInt(KEY_AUTO_STOP, value).apply()
+        get() = prefs.getInt(KEY_AUTO_STOP, ScrollSettings.DEFAULT_AUTO_STOP_MINUTES)
+        set(value) {
+            prefs.edit().putInt(KEY_AUTO_STOP, value).apply()
+            _autoStopFlow.value = value
+        }
 
     var permissionsCompleted: Boolean
         get() = prefs.getBoolean(KEY_PERMISSIONS_COMPLETED, false)

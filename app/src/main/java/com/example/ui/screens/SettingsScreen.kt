@@ -52,6 +52,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -90,12 +91,12 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    var keepDefault by remember { mutableStateOf(preferences.keepAsDefault) }
-    var interval by remember { mutableIntStateOf(preferences.intervalSeconds) }
+    val keepDefault by preferences.keepDefaultFlow.collectAsState()
+    val interval by preferences.intervalFlow.collectAsState()
     var durationMs by remember { mutableLongStateOf(preferences.swipeDurationMs) }
     var distancePercent by remember { mutableIntStateOf(preferences.swipeDistancePercent) }
     var antiBot by remember { mutableStateOf(preferences.antiBotEnabled) }
-    var direction by remember { mutableStateOf(preferences.swipeDirection) }
+    val direction by preferences.directionFlow.collectAsState()
     var autoStopMinutes by remember { mutableIntStateOf(preferences.autoStopMinutes) }
 
     Column(
@@ -214,7 +215,6 @@ fun SettingsScreen(
                         isSelected = direction == SwipeDirection.UP,
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            direction = SwipeDirection.UP
                             preferences.swipeDirection = SwipeDirection.UP
                             onSettingsChanged()
                         }
@@ -228,7 +228,6 @@ fun SettingsScreen(
                         isSelected = direction == SwipeDirection.DOWN,
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            direction = SwipeDirection.DOWN
                             preferences.swipeDirection = SwipeDirection.DOWN
                             onSettingsChanged()
                         }
@@ -249,7 +248,6 @@ fun SettingsScreen(
                         isSelected = direction == SwipeDirection.LEFT,
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            direction = SwipeDirection.LEFT
                             preferences.swipeDirection = SwipeDirection.LEFT
                             onSettingsChanged()
                         }
@@ -263,7 +261,6 @@ fun SettingsScreen(
                         isSelected = direction == SwipeDirection.RIGHT,
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            direction = SwipeDirection.RIGHT
                             preferences.swipeDirection = SwipeDirection.RIGHT
                             onSettingsChanged()
                         }
@@ -327,7 +324,6 @@ fun SettingsScreen(
                     Switch(
                         checked = keepDefault,
                         onCheckedChange = {
-                            keepDefault = it
                             preferences.keepAsDefault = it
                             onSettingsChanged()
                         },
@@ -379,8 +375,10 @@ fun SettingsScreen(
                 Slider(
                     value = interval.toFloat(),
                     onValueChange = {
-                        interval = it.toInt()
                         preferences.intervalSeconds = it.toInt()
+                        if (preferences.keepAsDefault) {
+                            preferences.keepAsDefault = false
+                        }
                         onSettingsChanged()
                     },
                     valueRange = 1f..60f,

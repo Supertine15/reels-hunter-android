@@ -15,13 +15,14 @@ data class ScrollSettings(
     val swipeDistancePercent: Int = 65, // 30% to 90%
     val antiBotEnabled: Boolean = true,
     val swipeDirection: SwipeDirection = SwipeDirection.UP,
-    val autoStopMinutes: Int = 0 // 0 = Off, 15, 30, 60, 120, 240, 480, 720
+    val autoStopMinutes: Int = 60 // Default 60 mins (1 Hour), range 15m to 600m (10 hours)
 ) {
     // Universal optimized defaults for Shorts/Reels/TikTok
     companion object {
         const val DEFAULT_INTERVAL = 8
         const val DEFAULT_DURATION_MS = 320L
         const val DEFAULT_DISTANCE_PERCENT = 65
+        const val DEFAULT_AUTO_STOP_MINUTES = 60
 
         fun getUniversalDefaults(): ScrollSettings {
             return ScrollSettings(
@@ -32,7 +33,7 @@ data class ScrollSettings(
                 swipeDistancePercent = DEFAULT_DISTANCE_PERCENT,
                 antiBotEnabled = true,
                 swipeDirection = SwipeDirection.UP,
-                autoStopMinutes = 0
+                autoStopMinutes = DEFAULT_AUTO_STOP_MINUTES
             )
         }
     }

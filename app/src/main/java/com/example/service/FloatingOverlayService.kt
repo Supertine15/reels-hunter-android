@@ -270,7 +270,7 @@ fun FloatingBarRoot(
     val countdown by CoinHunterAccessibilityService.countdownFlow.collectAsState()
     val serviceConnected by CoinHunterAccessibilityService.serviceConnectedFlow.collectAsState()
 
-    var currentInterval by remember { mutableStateOf(preferences.intervalSeconds) }
+    val currentInterval by preferences.intervalFlow.collectAsState()
 
     if (isMinimized) {
         // Minimized Bubble Pill
@@ -300,8 +300,8 @@ fun FloatingBarRoot(
             },
             onDecreaseInterval = {
                 if (currentInterval > 1) {
-                    currentInterval--
-                    preferences.intervalSeconds = currentInterval
+                    val newInterval = currentInterval - 1
+                    preferences.intervalSeconds = newInterval
                     if (preferences.keepAsDefault) {
                         preferences.keepAsDefault = false
                     }
@@ -309,8 +309,8 @@ fun FloatingBarRoot(
             },
             onIncreaseInterval = {
                 if (currentInterval < 60) {
-                    currentInterval++
-                    preferences.intervalSeconds = currentInterval
+                    val newInterval = currentInterval + 1
+                    preferences.intervalSeconds = newInterval
                     if (preferences.keepAsDefault) {
                         preferences.keepAsDefault = false
                     }

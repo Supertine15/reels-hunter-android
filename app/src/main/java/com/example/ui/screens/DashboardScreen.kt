@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.OpenInBrowser
@@ -126,12 +127,14 @@ fun DashboardScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scrollState = rememberScrollState()
 
-    var isStandby by remember { mutableStateOf(preferences.isStandbyEnabled) }
-    var interval by remember { mutableIntStateOf(preferences.intervalSeconds) }
-    var direction by remember { mutableStateOf(preferences.swipeDirection) }
+    val isStandby by preferences.standbyFlow.collectAsState()
+    val interval by preferences.intervalFlow.collectAsState()
+    val direction by preferences.directionFlow.collectAsState()
+    val autoStopMinutes by preferences.autoStopFlow.collectAsState()
 
     val isAutoScrolling by CoinHunterAccessibilityService.isAutoScrollingFlow.collectAsState()
     val countdown by CoinHunterAccessibilityService.countdownFlow.collectAsState()
+    val autoStopRemainingSeconds by CoinHunterAccessibilityService.autoStopRemainingSecondsFlow.collectAsState()
     val totalSwipes by CoinHunterAccessibilityService.totalSwipesCompletedFlow.collectAsState()
     val isServiceConnected by CoinHunterAccessibilityService.serviceConnectedFlow.collectAsState()
 
@@ -334,7 +337,6 @@ fun DashboardScreen(
                             CoinHunterAccessibilityService.instance?.stopAutoScroll()
                         } else {
                             if (!isStandby) {
-                                isStandby = true
                                 preferences.isStandbyEnabled = true
                             }
                             onStartAutoScrollAndMinimize()
@@ -450,14 +452,14 @@ fun DashboardScreen(
         }
 
         // -------------------------------------------------------------
-        // 3. Auto-Scroll Standby Card (matching Screenshot 1 & 4)
+        // 3. Auto-Off Timer (Sleep Timer) Card
         // -------------------------------------------------------------
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(
                     width = 1.5.dp,
-                    color = if (isStandby) RadarGreen.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                    color = if (isAutoScrolling && autoStopRemainingSeconds > 0) CyanAccent.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(20.dp)
                 ),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -478,17 +480,14 @@ fun DashboardScreen(
                         modifier = Modifier
                             .size(46.dp)
                             .clip(CircleShape)
-                            .background(
-                                if (isStandby) RadarGreen.copy(alpha = 0.15f)
-                                else MaterialTheme.colorScheme.surfaceVariant
-                            ),
+                            .background(CyanAccent.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Standby Master",
-                            tint = if (isStandby) RadarGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(26.dp)
+                            imageVector = Icons.Default.HourglassBottom,
+                            contentDescription = "Auto-Off Timer",
+                            tint = CyanAccent,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -496,48 +495,89 @@ fun DashboardScreen(
 
                     Column {
                         Text(
-                            text = "Auto-Scroll Standby",
+                            text = "Auto-Off Timer",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (isStandby) "Tap Start to automate short video feeds" else "Standby paused / Automation off",
+                            text = if (isAutoScrolling && autoStopRemainingSeconds > 0) {
+                                val hrs = autoStopRemainingSeconds / 3600
+                                val mins = (autoStopRemainingSeconds % 3600) / 60
+                                val secs = autoStopRemainingSeconds % 60
+                                if (hrs > 0) {
+                                    String.format("Active: %d:%02d:%02d remaining", hrs, mins, secs)
+                                } else {
+                                    String.format("Active: %02d:%02d remaining", mins, secs)
+                                }
+                            } else {
+                                "Stops scroll & closes bar when timer hits 0:00"
+                            },
                             fontSize = 12.sp,
-                            color = if (isStandby) RadarGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isAutoScrolling && autoStopRemainingSeconds > 0) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (isStandby) "ON" else "OFF",
-                        color = if (isStandby) RadarGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-
-                    Switch(
-                        checked = isStandby,
-                        onCheckedChange = {
-                            if (!areAllGranted && it) {
-                                showPermissionDialog = true
-                            } else {
-                                isStandby = it
-                                preferences.isStandbyEnabled = it
-                                if (!it && isAutoScrolling) {
-                                    CoinHunterAccessibilityService.instance?.stopAutoScroll()
-                                }
+                // Timer Stepper: [-] 1 hr [+] (15m to 600m)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                ) {
+                    IconButton(
+                        onClick = {
+                            if (autoStopMinutes > 15) {
+                                val newDuration = autoStopMinutes - 15
+                                preferences.autoStopMinutes = newDuration
                             }
                         },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF003816),
-                            checkedTrackColor = RadarGreen,
-                            uncheckedThumbColor = Color.LightGray,
-                            uncheckedTrackColor = Color(0xFF263045)
+                        enabled = autoStopMinutes > 15,
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Decrease Timer",
+                            tint = if (autoStopMinutes > 15) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                            modifier = Modifier.size(16.dp)
                         )
+                    }
+
+                    val hours = autoStopMinutes / 60
+                    val mins = autoStopMinutes % 60
+                    val durationText = when {
+                        hours == 0 -> "$mins min"
+                        mins == 0 -> if (hours == 1) "1 hr" else "$hours hrs"
+                        else -> "${hours}h ${mins}m"
+                    }
+
+                    Text(
+                        text = durationText,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.sp,
+                        color = CyanAccent,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
+
+                    IconButton(
+                        onClick = {
+                            if (autoStopMinutes < 600) {
+                                val newDuration = autoStopMinutes + 15
+                                preferences.autoStopMinutes = newDuration
+                            }
+                        },
+                        enabled = autoStopMinutes < 600,
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Increase Timer",
+                            tint = if (autoStopMinutes < 600) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -596,8 +636,10 @@ fun DashboardScreen(
                         IconButton(
                             onClick = {
                                 if (interval > 1) {
-                                    interval--
-                                    preferences.intervalSeconds = interval
+                                    preferences.intervalSeconds = interval - 1
+                                    if (preferences.keepAsDefault) {
+                                        preferences.keepAsDefault = false
+                                    }
                                 }
                             },
                             modifier = Modifier.size(34.dp)
@@ -621,8 +663,10 @@ fun DashboardScreen(
                         IconButton(
                             onClick = {
                                 if (interval < 60) {
-                                    interval++
-                                    preferences.intervalSeconds = interval
+                                    preferences.intervalSeconds = interval + 1
+                                    if (preferences.keepAsDefault) {
+                                        preferences.keepAsDefault = false
+                                    }
                                 }
                             },
                             modifier = Modifier.size(34.dp)
@@ -643,7 +687,6 @@ fun DashboardScreen(
                             label = "Up",
                             isSelected = direction == SwipeDirection.UP,
                             onClick = {
-                                direction = SwipeDirection.UP
                                 preferences.swipeDirection = SwipeDirection.UP
                             }
                         )
@@ -652,7 +695,6 @@ fun DashboardScreen(
                             label = "Down",
                             isSelected = direction == SwipeDirection.DOWN,
                             onClick = {
-                                direction = SwipeDirection.DOWN
                                 preferences.swipeDirection = SwipeDirection.DOWN
                             }
                         )
@@ -661,7 +703,6 @@ fun DashboardScreen(
                             label = "Left",
                             isSelected = direction == SwipeDirection.LEFT,
                             onClick = {
-                                direction = SwipeDirection.LEFT
                                 preferences.swipeDirection = SwipeDirection.LEFT
                             }
                         )
@@ -791,52 +832,6 @@ fun DashboardScreen(
                 highlightColor = CyanAccent,
                 modifier = Modifier.weight(1f)
             )
-        }
-
-        // -------------------------------------------------------------
-        // 6. Master Full-Width Start Button (matching Screenshot 4)
-        // -------------------------------------------------------------
-        Button(
-            onClick = {
-                if (!areAllGranted) {
-                    showPermissionDialog = true
-                } else {
-                    if (isAutoScrolling) {
-                        CoinHunterAccessibilityService.instance?.stopAutoScroll()
-                    } else {
-                        if (!isStandby) {
-                            isStandby = true
-                            preferences.isStandbyEnabled = true
-                        }
-                        onStartAutoScrollAndMinimize()
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .shadow(12.dp, RoundedCornerShape(18.dp)),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isAutoScrolling) RoseAlert else RadarGreen
-            ),
-            shape = RoundedCornerShape(18.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (isAutoScrolling) Icons.Default.PowerSettingsNew else Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = if (isAutoScrolling) Color.White else Color(0xFF003816),
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (isAutoScrolling) "Stop Auto-Scroll" else "Start Auto-Scroll",
-                    color = if (isAutoScrolling) Color.White else Color(0xFF003816),
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 17.sp,
-                    letterSpacing = 0.5.sp
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))

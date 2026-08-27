@@ -112,7 +112,9 @@ class CoinHunterAccessibilityService : AccessibilityService() {
                     _autoStopRemainingSecondsFlow.value = remaining
                 }
                 if (isActive) {
+                    Log.d(TAG, "Auto-Off Timer reached 0:00. Stopping auto-scroll and dismissing floating overlay to conserve battery.")
                     stopAutoScroll()
+                    FloatingOverlayService.stopService(this@CoinHunterAccessibilityService)
                 }
             }
         } else {

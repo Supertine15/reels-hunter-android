@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AppPreferences
 import com.example.model.SwipeDirection
+import com.example.ui.theme.AmberWarning
 import com.example.ui.theme.CyanAccent
 import com.example.ui.theme.EmeraldSuccess
 import com.example.ui.theme.PurpleLight
@@ -323,8 +324,16 @@ fun SettingsScreen(
 
                     Switch(
                         checked = keepDefault,
-                        onCheckedChange = {
-                            preferences.keepAsDefault = it
+                        onCheckedChange = { isChecked ->
+                            preferences.keepAsDefault = isChecked
+                            if (isChecked) {
+                                val defaults = com.example.model.ScrollSettings.getUniversalDefaults()
+                                preferences.intervalSeconds = defaults.intervalSeconds
+                                preferences.swipeDurationMs = defaults.swipeDurationMs
+                                preferences.swipeDistancePercent = defaults.swipeDistancePercent
+                                durationMs = defaults.swipeDurationMs
+                                distancePercent = defaults.swipeDistancePercent
+                            }
                             onSettingsChanged()
                         },
                         colors = SwitchDefaults.colors(
@@ -337,12 +346,52 @@ fun SettingsScreen(
         }
 
         // Section 3: Time Interval & Swipe Speed Calibration
+        val isSlidersEnabled = !keepDefault
+        val slidersAlpha = if (isSlidersEnabled) 1f else 0.4f
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(20.dp)
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(18.dp)
+                    .alpha(slidersAlpha)
+            ) {
+                // Section Header with Lock Status
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (isSlidersEnabled) Icons.Default.Tune else Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = if (isSlidersEnabled) RadarGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Speed & Timing Calibration",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    if (!isSlidersEnabled) {
+                        Text(
+                            text = "LOCKED (Default)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = AmberWarning
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
                 // Slider 1: Scroll Interval
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -353,7 +402,7 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.Default.Timer,
                             contentDescription = null,
-                            tint = RadarGreen,
+                            tint = if (isSlidersEnabled) RadarGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -368,25 +417,28 @@ fun SettingsScreen(
                         text = "$interval seconds",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 14.sp,
-                        color = RadarGreen
+                        color = if (isSlidersEnabled) RadarGreen else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Slider(
                     value = interval.toFloat(),
                     onValueChange = {
-                        preferences.intervalSeconds = it.toInt()
-                        if (preferences.keepAsDefault) {
-                            preferences.keepAsDefault = false
+                        if (isSlidersEnabled) {
+                            preferences.intervalSeconds = it.toInt()
+                            onSettingsChanged()
                         }
-                        onSettingsChanged()
                     },
+                    enabled = isSlidersEnabled,
                     valueRange = 1f..60f,
                     steps = 58,
                     colors = SliderDefaults.colors(
                         thumbColor = RadarGreen,
                         activeTrackColor = RadarGreen,
-                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        disabledThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        disabledActiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        disabledInactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                     ),
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
@@ -403,7 +455,7 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.Default.Speed,
                             contentDescription = null,
-                            tint = PurpleLight,
+                            tint = if (isSlidersEnabled) PurpleLight else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -418,23 +470,29 @@ fun SettingsScreen(
                         text = "$durationMs ms",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 14.sp,
-                        color = PurpleLight
+                        color = if (isSlidersEnabled) PurpleLight else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Slider(
                     value = durationMs.toFloat(),
                     onValueChange = {
-                        durationMs = it.toLong()
-                        preferences.swipeDurationMs = it.toLong()
-                        onSettingsChanged()
+                        if (isSlidersEnabled) {
+                            durationMs = it.toLong()
+                            preferences.swipeDurationMs = it.toLong()
+                            onSettingsChanged()
+                        }
                     },
+                    enabled = isSlidersEnabled,
                     valueRange = 150f..800f,
                     steps = 12,
                     colors = SliderDefaults.colors(
                         thumbColor = PurplePrimary,
                         activeTrackColor = PurplePrimary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        disabledThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        disabledActiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        disabledInactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                     ),
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
@@ -451,7 +509,7 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.Default.Tune,
                             contentDescription = null,
-                            tint = CyanAccent,
+                            tint = if (isSlidersEnabled) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -466,23 +524,29 @@ fun SettingsScreen(
                         text = "$distancePercent% of Screen",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 14.sp,
-                        color = CyanAccent
+                        color = if (isSlidersEnabled) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Slider(
                     value = distancePercent.toFloat(),
                     onValueChange = {
-                        distancePercent = it.toInt()
-                        preferences.swipeDistancePercent = it.toInt()
-                        onSettingsChanged()
+                        if (isSlidersEnabled) {
+                            distancePercent = it.toInt()
+                            preferences.swipeDistancePercent = it.toInt()
+                            onSettingsChanged()
+                        }
                     },
+                    enabled = isSlidersEnabled,
                     valueRange = 30f..90f,
                     steps = 11,
                     colors = SliderDefaults.colors(
                         thumbColor = CyanAccent,
                         activeTrackColor = CyanAccent,
-                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        disabledThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        disabledActiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        disabledInactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                     ),
                     modifier = Modifier.padding(vertical = 4.dp)
                 )

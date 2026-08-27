@@ -40,7 +40,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Pause
@@ -85,6 +89,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.MainActivity
 import com.example.R
 import com.example.data.AppPreferences
+import com.example.model.SwipeDirection
 import com.example.ui.theme.CyanAccent
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DarkOutline
@@ -271,6 +276,7 @@ fun FloatingBarRoot(
     val serviceConnected by CoinHunterAccessibilityService.serviceConnectedFlow.collectAsState()
 
     val currentInterval by preferences.intervalFlow.collectAsState()
+    val currentDirection by preferences.directionFlow.collectAsState()
 
     if (isMinimized) {
         // Minimized Bubble Pill
@@ -290,6 +296,7 @@ fun FloatingBarRoot(
             countdown = countdown,
             serviceConnected = serviceConnected,
             interval = currentInterval,
+            direction = currentDirection,
             onToggleScroll = {
                 val acc = CoinHunterAccessibilityService.instance
                 if (acc != null) {
@@ -297,6 +304,9 @@ fun FloatingBarRoot(
                 } else {
                     onOpenAppRequested()
                 }
+            },
+            onToggleDirection = {
+                preferences.swipeDirection = currentDirection.next()
             },
             onDecreaseInterval = {
                 if (currentInterval > 1) {
@@ -395,7 +405,9 @@ fun ExpandedFloatingBar(
     countdown: Int,
     serviceConnected: Boolean,
     interval: Int,
+    direction: SwipeDirection,
     onToggleScroll: () -> Unit,
+    onToggleDirection: () -> Unit,
     onDecreaseInterval: () -> Unit,
     onIncreaseInterval: () -> Unit,
     onNextSwipe: () -> Unit,
@@ -406,7 +418,7 @@ fun ExpandedFloatingBar(
 ) {
     Surface(
         modifier = Modifier
-            .width(280.dp)
+            .width(310.dp)
             .shadow(20.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
             .border(1.5.dp, Color(0xFF7C4DFF).copy(alpha = 0.4f), RoundedCornerShape(28.dp)),
@@ -500,16 +512,16 @@ fun ExpandedFloatingBar(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Main Controls Row
+            // Main Controls Row: [Play/Pause] [Direction Selector] [- 8s +] [Instant Next]
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Big Circular Play/Pause button
+                // 1. Big Circular Play/Pause button
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
                         .shadow(8.dp, CircleShape)
                         .clip(CircleShape)
                         .background(
@@ -549,7 +561,33 @@ fun ExpandedFloatingBar(
                     }
                 }
 
-                // Interval Adjustment Pill [ - 4s + ]
+                // 2. Circular Direction / Gesture Selector Button (Cycles Down -> Up -> Right -> Left)
+                val (directionIcon, directionLabel) = when (direction) {
+                    SwipeDirection.DOWN -> Icons.Default.ArrowDownward to "Down (↓)"
+                    SwipeDirection.UP -> Icons.Default.ArrowUpward to "Up (↑)"
+                    SwipeDirection.RIGHT -> Icons.Default.ArrowForward to "Right (→)"
+                    SwipeDirection.LEFT -> Icons.AutoMirrored.Filled.ArrowBack to "Left (←)"
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .shadow(6.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(Color(0xFF263045))
+                        .border(1.2.dp, CyanAccent.copy(alpha = 0.55f), CircleShape)
+                        .clickable { onToggleDirection() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = directionIcon,
+                        contentDescription = "Direction: $directionLabel",
+                        tint = CyanAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // 3. Interval Adjustment Pill [ - 4s + ]
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
@@ -560,13 +598,13 @@ fun ExpandedFloatingBar(
                 ) {
                     IconButton(
                         onClick = onDecreaseInterval,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Remove,
                             contentDescription = "Decrease",
                             tint = Color.White,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                     }
                     Text(
@@ -574,25 +612,25 @@ fun ExpandedFloatingBar(
                         color = Color(0xFF69F0AE),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                        modifier = Modifier.padding(horizontal = 3.dp)
                     )
                     IconButton(
                         onClick = onIncreaseInterval,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Increase",
                             tint = Color.White,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                     }
                 }
 
-                // Instant Next / 1x Swipe Button
+                // 4. Instant Next / 1x Swipe Button
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF7C4DFF).copy(alpha = 0.25f))
                         .border(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.6f), CircleShape)
@@ -603,7 +641,7 @@ fun ExpandedFloatingBar(
                         imageVector = Icons.Default.SkipNext,
                         contentDescription = "Next Reel",
                         tint = Color(0xFFB388FF),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

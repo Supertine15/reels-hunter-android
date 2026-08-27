@@ -135,7 +135,6 @@ fun DashboardScreen(
     val isAutoScrolling by CoinHunterAccessibilityService.isAutoScrollingFlow.collectAsState()
     val countdown by CoinHunterAccessibilityService.countdownFlow.collectAsState()
     val autoStopRemainingSeconds by CoinHunterAccessibilityService.autoStopRemainingSecondsFlow.collectAsState()
-    val totalSwipes by CoinHunterAccessibilityService.totalSwipesCompletedFlow.collectAsState()
     val isServiceConnected by CoinHunterAccessibilityService.serviceConnectedFlow.collectAsState()
 
     var showPermissionDialog by remember { mutableStateOf(false) }
@@ -791,50 +790,10 @@ fun DashboardScreen(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Info note
-                Text(
-                    text = "ⓘ Starting collapses ReelsHunter into the floating overlay controller",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
 
-        // -------------------------------------------------------------
-        // 5. Live Stats Row (matching Screenshot 4)
-        // -------------------------------------------------------------
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            StatCard(
-                title = "VIDEOS SCROLLED",
-                value = "$totalSwipes",
-                highlightColor = RadarGreen,
-                modifier = Modifier.weight(1f)
-            )
-
-            StatCard(
-                title = "TARGET APP",
-                value = "Shorts / Reels",
-                highlightColor = PurpleLight,
-                modifier = Modifier.weight(1f)
-            )
-
-            StatCard(
-                title = "SWIPE ENGINE",
-                value = "${preferences.swipeDurationMs}ms / ${preferences.swipeDistancePercent}%",
-                highlightColor = CyanAccent,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(16.dp))
     }
 
     // -------------------------------------------------------------
@@ -984,44 +943,6 @@ fun DirectionIconButton(
             tint = if (isSelected) RadarGreen else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
-    }
-}
-
-@Composable
-fun StatCard(
-    title: String,
-    value: String,
-    highlightColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = title,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = highlightColor,
-                maxLines = 1
-            )
-        }
     }
 }
 

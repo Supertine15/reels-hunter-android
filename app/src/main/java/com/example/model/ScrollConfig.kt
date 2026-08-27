@@ -1,10 +1,17 @@
 package com.example.model
 
 enum class SwipeDirection(val label: String, val description: String) {
-    UP(label = "Up (Next Video)", description = "Bottom-to-Top swipe to load next video"),
     DOWN(label = "Down (Prev Video)", description = "Top-to-Bottom swipe to load previous video"),
-    LEFT(label = "Left", description = "Right-to-Left horizontal swipe"),
-    RIGHT(label = "Right", description = "Left-to-Right horizontal swipe")
+    UP(label = "Up (Next Video)", description = "Bottom-to-Top swipe to load next video"),
+    RIGHT(label = "Right", description = "Left-to-Right horizontal swipe"),
+    LEFT(label = "Left", description = "Right-to-Left horizontal swipe");
+
+    fun next(): SwipeDirection = when (this) {
+        DOWN -> UP
+        UP -> RIGHT
+        RIGHT -> LEFT
+        LEFT -> DOWN
+    }
 }
 
 data class ScrollSettings(

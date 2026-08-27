@@ -108,7 +108,10 @@ class AppPreferences(context: Context) {
                 SwipeDirection.UP
             }
         }
-        set(value) = prefs.edit().putString(KEY_DIRECTION, value.name).apply()
+        set(value) {
+            prefs.edit().putString(KEY_DIRECTION, value.name).apply()
+            _directionFlow.value = value
+        }
 
     var autoStopMinutes: Int
         get() = prefs.getInt(KEY_AUTO_STOP, ScrollSettings.DEFAULT_AUTO_STOP_MINUTES)

@@ -65,7 +65,7 @@ jobs:
               -validity 10000 \
               -storepass android \
               -keypass android \
-              -dname "CN=Android Debug,O=Android,C=US"
+              -dname "CN=Reels Hunter,O=Reels Hunter,C=US"
           else
             echo "Existing debug.keystore detected."
           fi
@@ -84,7 +84,7 @@ jobs:
           EXPECTED_APK="app/build/outputs/apk/debug/app-debug.apk"
           if [ ! -f "$EXPECTED_APK" ]; then
             echo "::error::Expected debug APK not found at $EXPECTED_APK"
-            echo "Searching only inside app/build/outputs/apk directory:"
+            echo "Searching inside app/build/outputs/apk directory:"
             if [ -d "app/build/outputs/apk" ]; then
               find app/build/outputs/apk -type f -name "*.apk"
             else
@@ -114,7 +114,7 @@ jobs:
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
+          name: reels-hunter-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -124,13 +124,7 @@ jobs:
           RELEASE_DIR="${{ runner.temp }}/release_assets"
           mkdir -p "$RELEASE_DIR"
 
-          RAW_REPO_NAME="${{ github.repository }}"
-          REPO_NAME=$(echo "$RAW_REPO_NAME" | awk -F '/' '{print $NF}' | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9._-' '-')
-          REPO_NAME="${REPO_NAME#-}"
-          REPO_NAME="${REPO_NAME%-}"
-          [ -z "$REPO_NAME" ] && REPO_NAME="android-app"
-
-          ASSET_FILENAME="${REPO_NAME}-debug-build-${{ github.run_number }}.apk"
+          ASSET_FILENAME="reels-hunter-v${{ github.run_number }}.apk"
           TARGET_PATH="$RELEASE_DIR/$ASSET_FILENAME"
 
           cp "app/build/outputs/apk/debug/app-debug.apk" "$TARGET_PATH"
@@ -164,18 +158,16 @@ jobs:
             exit 1
           fi
 
-          TAG_NAME="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
-          TITLE="Debug APK Build #${{ github.run_number }}"
+          TAG_NAME="reels-hunter-v${{ github.run_number }}.${{ github.run_attempt }}"
+          TITLE="Reels Hunter Build #${{ github.run_number }}"
 
           NOTES=$(cat << 'EOF'
-          ### Debug APK Release
-          - **Build Type**: Automatically generated debug APK
-          - **Built by**: GitHub Actions
-          - **Run Number**: ${{ github.run_number }}
-          - **Run Attempt**: ${{ github.run_attempt }}
-          - **Source Commit**: ${{ github.sha }}
-          - **Notice**: Intended for testing only. This is not a Play Store production release.
-          - **Signing**: Signed with a temporary debug keystore.
+          ### Reels Hunter Debug APK Release
+          - **App Name**: Reels Hunter
+          - **Build Type**: Automatically generated build by GitHub Actions
+          - **Run number**: ${{ github.run_number }}
+          - **Source commit**: ${{ github.sha }}
+          - **Notice**: Intended for testing. Signed with a temporary debug keystore.
           EOF
           )
 
@@ -190,13 +182,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG_NAME="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
-          TITLE="Debug APK Build #${{ github.run_number }}"
+          TAG_NAME="reels-hunter-v${{ github.run_number }}.${{ github.run_attempt }}"
+          TITLE="Reels Hunter Build #${{ github.run_number }}"
           ASSET_NAME="${{ steps.prepare_asset.outputs.asset_name }}"
 
-          echo "## 🤖 Android Debug APK Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 🤖 Reels Hunter Debug APK Build Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Artifact Name:** \`app-debug-apk\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **App Name:** Reels Hunter" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Artifact Name:** \`reels-hunter-debug-apk\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Build Run:** #${{ github.run_number }} (Attempt ${{ github.run_attempt }})" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Target Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -216,13 +209,13 @@ jobs:
             echo "- **Direct APK Asset:** \`$ASSET_NAME\`" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "📱 You can download the APK directly onto your phone from the release **Assets** section." >> "$GITHUB_STEP_SUMMARY"
-            echo "ℹ️ The normal Actions artifact \`app-debug-apk\` is also preserved under this workflow run as a backup." >> "$GITHUB_STEP_SUMMARY"
+            echo "ℹ️ The normal Actions artifact \`reels-hunter-debug-apk\` is also preserved under this workflow run as a backup." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning::GitHub Release publishing did not succeed or was skipped."
-            echo "The APK build succeeded and the artifact 'app-debug-apk' was uploaded successfully."
+            echo "The APK build succeeded and the artifact 'reels-hunter-debug-apk' was uploaded successfully."
 
             echo "### ⚠️ Release Status Notice" >> "$GITHUB_STEP_SUMMARY"
-            echo "The debug APK was built and preserved successfully as an Actions artifact (\`app-debug-apk\`), but automatic GitHub Release publishing was not completed." >> "$GITHUB_STEP_SUMMARY"
+            echo "The debug APK was built and preserved successfully as an Actions artifact (\`reels-hunter-debug-apk\`), but automatic GitHub Release publishing was not completed." >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "💾 **Download Backup:** You can download \`app-debug-apk\` directly from the **Artifacts** section of this GitHub Actions run." >> "$GITHUB_STEP_SUMMARY"
+            echo "💾 **Download Backup:** You can download \`reels-hunter-debug-apk\` directly from the **Artifacts** section of this GitHub Actions run." >> "$GITHUB_STEP_SUMMARY"
           fi

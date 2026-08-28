@@ -66,8 +66,8 @@ class MainActivity : ComponentActivity() {
             // Automatic startup check to notify the user if a new APK is available for Easy Scroll
             LaunchedEffect(Unit) {
                 try {
-                    val result = AppUpdateManager.checkForUpdates()
-                    if (result is UpdateCheckResult.UpdateAvailable) {
+                    val result = AppUpdateManager.checkForUpdates(BuildConfig.VERSION_NAME)
+                    if (result is UpdateCheckResult.UpdateAvailable && result.updateInfo.isNewer) {
                         updateCheckResult = result
                         showUpdateDialog = true
                     }
@@ -75,11 +75,26 @@ class MainActivity : ComponentActivity() {
             }
 
             fun performManualUpdateCheck() {
-                showUpdateDialog = true
-                updateCheckResult = UpdateCheckResult.Checking
                 scope.launch {
-                    val result = AppUpdateManager.checkForUpdates()
-                    updateCheckResult = result
+                    try {
+                        val result = AppUpdateManager.checkForUpdates(BuildConfig.VERSION_NAME)
+                        if (result is UpdateCheckResult.UpdateAvailable && result.updateInfo.isNewer) {
+                            updateCheckResult = result
+                            showUpdateDialog = true
+                        } else {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "You are using the latest version of Easy Scroll (v${BuildConfig.VERSION_NAME})",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "You are using the latest version of Easy Scroll (v${BuildConfig.VERSION_NAME})",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
 

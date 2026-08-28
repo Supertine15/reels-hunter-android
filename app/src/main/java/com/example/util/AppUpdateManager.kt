@@ -61,7 +61,7 @@ object AppUpdateManager {
                     val json = JSONObject(response)
                     val tagName = json.optString("tag_name", "")
                     val releaseTitle = json.optString("name", "New Release")
-                    val releaseNotes = json.optString("body", "No release notes provided.")
+                    val rawReleaseNotes = json.optString("body", "")
                     val htmlUrl = json.optString("html_url", AppConstants.GITHUB_REPO_URL)
 
                     // Find APK asset in assets list if available
@@ -80,12 +80,13 @@ object AppUpdateManager {
 
                     val cleanReleaseVersion = extractVersionString(tagName.ifEmpty { releaseTitle })
                     val isNewer = isRemoteVersionNewer(cleanReleaseVersion, currentVersionName)
+                    val cleanedNotes = cleanReleaseNotes(rawReleaseNotes)
 
                     val updateInfo = UpdateInfo(
                         tagName = tagName,
-                        versionName = cleanReleaseVersion.ifEmpty { tagName },
+                        versionName = cleanReleaseVersion.ifEmpty { tagName.ifEmpty { "1.0.2" } },
                         releaseTitle = releaseTitle,
-                        releaseNotes = releaseNotes,
+                        releaseNotes = cleanedNotes,
                         apkDownloadUrl = apkDownloadUrl ?: htmlUrl,
                         htmlUrl = htmlUrl,
                         isNewer = isNewer
@@ -121,20 +122,42 @@ object AppUpdateManager {
     }
 
     /**
-     * Extracts version numbers (e.g. "1.0.2" from "easy-scroll-v1.0.2" or "v1.0.2")
+     * Extracts version numbers (e.g. "1.0.2" from "easy-scroll-v1.0.2", "v1.0.2", or "Version 1.0.2")
      */
     fun extractVersionString(raw: String): String {
-        val regex = Regex("""\d+(\.\d+)+""")
-        return regex.find(raw)?.value ?: raw.replace(Regex("""[^0-9.]"""), "").trim('.')
+        if (raw.isBlank()) return ""
+        // Check for semver like 1.0.2, 1.0, 2.0.1
+        val semverRegex = Regex("""(?i)\b(?:v|version)?\s*(\d+\.\d+(?:\.\d+)?)\b""")
+        val match = semverRegex.find(raw)
+        if (match != null && match.groupValues.size > 1) {
+            return match.groupValues[1]
+        }
+
+        val genericRegex = Regex("""(\d+(?:\.\d+)+)""")
+        val genericMatch = genericRegex.find(raw)
+        if (genericMatch != null) {
+            return genericMatch.value
+        }
+
+        val singleRegex = Regex("""\d+""")
+        return singleRegex.find(raw)?.value ?: ""
     }
 
     /**
      * Determines whether the remote version is strictly newer than current version.
      */
     fun isRemoteVersionNewer(remote: String, current: String): Boolean {
-        if (remote.isBlank()) return false
-        val remoteParts = remote.split('.').mapNotNull { it.toIntOrNull() }
-        val currentParts = current.split('.').mapNotNull { it.toIntOrNull() }
+        if (remote.isBlank() || current.isBlank()) return false
+        val cleanRemote = remote.trim().removePrefix("v").removePrefix("V")
+        val cleanCurrent = current.trim().removePrefix("v").removePrefix("V")
+
+        if (cleanRemote.equals(cleanCurrent, ignoreCase = true)) {
+            return false
+        }
+
+        val remoteParts = cleanRemote.split('.').mapNotNull { it.toIntOrNull() }
+        val currentParts = cleanCurrent.split('.').mapNotNull { it.toIntOrNull() }
+        if (remoteParts.isEmpty() || currentParts.isEmpty()) return false
 
         val maxLen = maxOf(remoteParts.size, currentParts.size)
         for (i in 0 until maxLen) {
@@ -144,6 +167,45 @@ object AppUpdateManager {
             if (r < c) return false
         }
         return false
+    }
+
+    /**
+     * Cleans up GitHub Actions technical metadata from release notes to provide
+     * user-friendly changelog text.
+     */
+    fun cleanReleaseNotes(rawBody: String): String {
+        if (rawBody.isBlank()) {
+            return "• Performance improvements and smoother auto-scrolling\n• Stability optimizations and bug fixes"
+        }
+
+        val ignoredKeywords = listOf(
+            "app name",
+            "automatically generated",
+            "run number",
+            "source commit",
+            "commit sha",
+            "artifact",
+            "release asset",
+            "release tag",
+            "build & release report",
+            "github_step_summary"
+        )
+
+        val cleanedLines = rawBody.lines().filter { line ->
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) return@filter false
+            if (trimmed.startsWith("---") || trimmed.startsWith("===")) return@filter false
+            val lower = trimmed.lowercase()
+            ignoredKeywords.none { lower.contains(it) }
+        }.map { line ->
+            line.trim().removePrefix("## ").removePrefix("# ").removePrefix("### ")
+        }
+
+        return if (cleanedLines.isEmpty()) {
+            "• Performance improvements and smoother auto-scrolling\n• Stability optimizations and bug fixes"
+        } else {
+            cleanedLines.joinToString("\n")
+        }
     }
 
     /**

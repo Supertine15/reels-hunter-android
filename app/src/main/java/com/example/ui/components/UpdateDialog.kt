@@ -18,16 +18,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -42,9 +37,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.AmberWarning
-import com.example.ui.theme.PurpleLight
-import com.example.ui.theme.PurplePrimary
 import com.example.ui.theme.RadarGreen
 import com.example.util.AppConstants
 import com.example.util.AppUpdateManager
@@ -57,282 +49,133 @@ fun UpdateDialog(
 ) {
     val context = LocalContext.current
 
-    if (result is UpdateCheckResult.Idle) return
+    // Only display dialog when a newer update is actually available
+    val update = (result as? UpdateCheckResult.UpdateAvailable)?.updateInfo ?: return
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         containerColor = MaterialTheme.colorScheme.surface,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(RadarGreen.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SystemUpdate,
+                    contentDescription = null,
+                    tint = RadarGreen,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        },
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                when (result) {
-                    is UpdateCheckResult.Checking -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = RadarGreen,
-                            strokeWidth = 2.5.dp
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Checking Updates...",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    is UpdateCheckResult.UpdateAvailable -> {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(RadarGreen.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SystemUpdate,
-                                contentDescription = null,
-                                tint = RadarGreen,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Update Available",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    is UpdateCheckResult.LatestVersion -> {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(RadarGreen.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = RadarGreen,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "You're Up to Date",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    is UpdateCheckResult.Error -> {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(AmberWarning.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ErrorOutline,
-                                contentDescription = null,
-                                tint = AmberWarning,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "GitHub & Updates",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    else -> {}
-                }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "New Update Available",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Version ${update.versionName}",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = RadarGreen
+                )
             }
         },
         text = {
-            when (result) {
-                is UpdateCheckResult.Checking -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "A new version of Easy Scroll is available with performance improvements and bug fixes.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 19.sp
+                )
+
+                if (update.releaseNotes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 140.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            text = "Connecting to GitHub repository...",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = AppConstants.GITHUB_LATEST_RELEASE_API,
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-                is UpdateCheckResult.UpdateAvailable -> {
-                    val update = result.updateInfo
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(RadarGreen.copy(alpha = 0.1f))
-                                .border(1.dp, RadarGreen.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
-                                .padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "New: ${update.tagName.ifEmpty { update.versionName }}",
-                                fontWeight = FontWeight.Bold,
-                                color = RadarGreen,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "Easy Scroll",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        if (update.releaseTitle.isNotBlank()) {
-                            Text(
-                                text = update.releaseTitle,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 160.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                .padding(8.dp)
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            Text(
-                                text = update.releaseNotes,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 17.sp
-                            )
-                        }
-                    }
-                }
-                is UpdateCheckResult.LatestVersion -> {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Easy Scroll is currently running the latest version (v${result.currentVersion}).",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            lineHeight = 20.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "GitHub Repository: ${AppConstants.GITHUB_REPO_URL}",
-                            fontSize = 11.sp,
-                            color = PurpleLight
-                        )
-                    }
-                }
-                is UpdateCheckResult.Error -> {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Could not fetch release data automatically (${result.message}).",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "You can visit the GitHub repository directly to check for manual releases and APK downloads.",
+                            text = update.releaseNotes,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 17.sp
                         )
                     }
                 }
-                else -> {}
             }
         },
         confirmButton = {
-            when (result) {
-                is UpdateCheckResult.UpdateAvailable -> {
-                    Button(
-                        onClick = {
-                            val downloadUrl = result.updateInfo.apkDownloadUrl ?: result.updateInfo.htmlUrl
-                            AppUpdateManager.openUrl(context, downloadUrl)
-                            onDismiss()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = RadarGreen),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = Color(0xFF003816), modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Get APK Update", color = Color(0xFF003816), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                }
-                is UpdateCheckResult.LatestVersion -> {
-                    Button(
-                        onClick = {
-                            AppUpdateManager.openUrl(context, AppConstants.GITHUB_REPO_URL)
-                            onDismiss()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Code, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Visit GitHub", fontSize = 13.sp)
-                    }
-                }
-                is UpdateCheckResult.Error -> {
-                    Button(
-                        onClick = {
-                            AppUpdateManager.openUrl(context, AppConstants.GITHUB_REPO_URL)
-                            onDismiss()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Open Repository", fontSize = 13.sp)
-                    }
-                }
-                else -> {}
+            Button(
+                onClick = {
+                    val downloadUrl = update.apkDownloadUrl ?: update.htmlUrl
+                    AppUpdateManager.openUrl(context, downloadUrl)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = RadarGreen),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Download,
+                    contentDescription = null,
+                    tint = Color(0xFF003816),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Update Now",
+                    color = Color(0xFF003816),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
             }
         },
         dismissButton = {
-            when (result) {
-                is UpdateCheckResult.UpdateAvailable -> {
-                    OutlinedButton(
-                        onClick = {
-                            AppUpdateManager.openUrl(context, AppConstants.GITHUB_REPO_URL)
-                            onDismiss()
-                        },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("View on GitHub", fontSize = 12.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = {
+                        AppUpdateManager.openUrl(context, AppConstants.GITHUB_REPO_URL)
+                        onDismiss()
                     }
+                ) {
+                    Text(
+                        text = "View on GitHub",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                is UpdateCheckResult.Checking -> {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                }
-                else -> {
-                    TextButton(onClick = onDismiss) {
-                        Text("Close")
-                    }
+
+                TextButton(
+                    onClick = onDismiss
+                ) {
+                    Text(
+                        text = "Later",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp
+                    )
                 }
             }
         }

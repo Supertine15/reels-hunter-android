@@ -16,7 +16,6 @@ import java.net.URL
 data class UpdateInfo(
     val tagName: String,
     val versionName: String,
-    val versionCode: Int,
     val releaseTitle: String,
     val releaseNotes: String,
     val apkDownloadUrl: String?,
@@ -41,8 +40,7 @@ object AppUpdateManager {
      * https://api.github.com/repos/Supertine15/reels-hunter-android/releases/latest
      */
     suspend fun checkForUpdates(
-        currentVersionCode: Int = BuildConfig.VERSION_CODE,
-        currentVersionName: String = BuildConfig.VERSION_NAME
+        installedVersion: String = BuildConfig.VERSION_NAME
     ): UpdateCheckResult {
         return withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
@@ -70,43 +68,30 @@ object AppUpdateManager {
 
                     // Find APK asset in assets list if available
                     var apkDownloadUrl: String? = null
-                    var firstApkAssetName = ""
                     val assetsArray = json.optJSONArray("assets")
                     if (assetsArray != null) {
                         for (i in 0 until assetsArray.length()) {
                             val asset = assetsArray.getJSONObject(i)
                             val assetName = asset.optString("name", "")
                             if (assetName.endsWith(".apk", ignoreCase = true)) {
-                                if (apkDownloadUrl == null) {
-                                    apkDownloadUrl = asset.optString("browser_download_url", null)
-                                    firstApkAssetName = assetName
-                                }
+                                apkDownloadUrl = asset.optString("browser_download_url", null)
+                                break
                             }
                         }
                     }
 
-                    val cleanReleaseVersion = extractCleanVersionName(tagName.ifEmpty { releaseTitle })
-                    val remoteVersionCode = extractVersionCode(
-                        tagName = tagName,
-                        releaseTitle = releaseTitle,
-                        releaseNotes = rawReleaseNotes,
-                        assetName = firstApkAssetName,
-                        versionName = cleanReleaseVersion
-                    )
-
+                    // Extract strictly numeric version from tag or title
+                    val remoteVersionStr = extractNumericVersion(tagName.ifEmpty { releaseTitle })
                     val isNewer = isRemoteVersionNewer(
-                        remoteVersionName = cleanReleaseVersion,
-                        remoteVersionCode = remoteVersionCode,
-                        currentVersionName = currentVersionName,
-                        currentVersionCode = currentVersionCode
+                        remoteVersionStr = remoteVersionStr,
+                        installedVersionStr = installedVersion
                     )
 
                     val cleanedNotes = cleanReleaseNotes(rawReleaseNotes)
 
                     val updateInfo = UpdateInfo(
                         tagName = tagName,
-                        versionName = cleanReleaseVersion.ifEmpty { "1.0.2" },
-                        versionCode = remoteVersionCode,
+                        versionName = remoteVersionStr.ifEmpty { tagName },
                         releaseTitle = releaseTitle,
                         releaseNotes = cleanedNotes,
                         apkDownloadUrl = apkDownloadUrl ?: htmlUrl,
@@ -117,12 +102,12 @@ object AppUpdateManager {
                     if (isNewer) {
                         UpdateCheckResult.UpdateAvailable(updateInfo)
                     } else {
-                        UpdateCheckResult.LatestVersion(currentVersionName, updateInfo)
+                        UpdateCheckResult.LatestVersion(installedVersion, updateInfo)
                     }
                 } else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
                     // No releases published yet on GitHub repo
                     UpdateCheckResult.LatestVersion(
-                        currentVersion = currentVersionName,
+                        currentVersion = installedVersion,
                         updateInfo = null
                     )
                 } else {
@@ -144,111 +129,54 @@ object AppUpdateManager {
     }
 
     /**
-     * Strips prefixes and extracts clean semver strings:
-     * "easy-scroll-v1.0.2" -> "1.0.2"
-     * "v1.0.1" -> "1.0.1"
-     * "Release 1.0.3" -> "1.0.3"
+     * Uses Regex `\d+(\.\d+)*` to extract ONLY the numeric version string.
+     * Examples:
+     * - "easy-scroll-v12" -> "12"
+     * - "easy-scroll-v12.1" -> "12.1"
+     * - "v1.0.1" -> "1.0.1"
+     * - "Release 2.3.4" -> "2.3.4"
      */
-    fun extractCleanVersionName(raw: String): String {
+    fun extractNumericVersion(raw: String): String {
         if (raw.isBlank()) return ""
-        val withoutPrefix = raw
-            .replace(Regex("""(?i)^easy[-_]?scroll[-_]?v?"""), "")
-            .replace(Regex("""(?i)^reels[-_]?hunter[-_]?v?"""), "")
-            .replace(Regex("""(?i)^release[-_]?v?"""), "")
-            .replace(Regex("""(?i)^version\s*"""), "")
-            .trim()
-            .removePrefix("v")
-            .removePrefix("V")
-
-        val semverRegex = Regex("""(\d+(?:\.\d+)+)""")
-        val semverMatch = semverRegex.find(withoutPrefix)
-        if (semverMatch != null) {
-            return semverMatch.value
-        }
-
-        val singleNumberRegex = Regex("""\d+""")
-        return singleNumberRegex.find(withoutPrefix)?.value ?: withoutPrefix
+        val regex = Regex("""\d+(\.\d+)*""")
+        return regex.find(raw)?.value ?: ""
     }
 
     /**
-     * Extracts integer versionCode from release metadata, tags, or version parts.
+     * Parses numeric version string into integer parts list.
+     * Examples:
+     * - "12" -> [12]
+     * - "12.1" -> [12, 1]
+     * - "1.0.1" -> [1, 0, 1]
      */
-    fun extractVersionCode(
-        tagName: String,
-        releaseTitle: String,
-        releaseNotes: String,
-        assetName: String = "",
-        versionName: String = ""
-    ): Int {
-        // 1. Check for explicit versionCode in release notes or title: e.g. "versionCode: 3"
-        val explicitCodeRegex = Regex("""(?i)(?:versioncode|version_code|build|code)\s*[:=]\s*(\d+)""")
-        explicitCodeRegex.find(releaseNotes)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
-        explicitCodeRegex.find(releaseTitle)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
-
-        // 2. Check for explicit versionCode in asset name: e.g. "easy-scroll-vc3.apk", "app-v2.apk"
-        if (assetName.isNotBlank()) {
-            val assetCodeRegex = Regex("""(?i)[-_](?:vc|c|build|v)?(\d+)\.apk""")
-            assetCodeRegex.find(assetName)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
-        }
-
-        // 3. Check if tagName is a single integer like "v3" or "3"
-        val cleanTag = tagName.trim().removePrefix("v").removePrefix("V")
-        if (cleanTag.isNotEmpty() && cleanTag.all { it.isDigit() }) {
-            cleanTag.toIntOrNull()?.let { return it }
-        }
-
-        // 4. Calculate composite integer from semver parts (e.g. 1.0.1 -> 10001, 1.0.2 -> 10002)
-        val cleanName = if (versionName.isNotBlank()) versionName else extractCleanVersionName(tagName)
-        val parts = cleanName.split('.').mapNotNull { it.toIntOrNull() }
-        if (parts.isNotEmpty()) {
-            val major = parts.getOrElse(0) { 0 }
-            val minor = parts.getOrElse(1) { 0 }
-            val patch = parts.getOrElse(2) { 0 }
-            return major * 10000 + minor * 100 + patch
-        }
-
-        return 0
+    fun parseVersionParts(versionStr: String): List<Int> {
+        val clean = extractNumericVersion(versionStr)
+        if (clean.isBlank()) return emptyList()
+        return clean.split('.').mapNotNull { it.toIntOrNull() }
     }
 
     /**
-     * Strictly compares version codes and numeric semver components.
-     * Returns true ONLY if the remote version is strictly newer.
+     * Strict Semantic Version comparison.
+     * Returns true ONLY if remoteVersion > installedVersion.
+     * If remoteVersion <= installedVersion, returns false.
      */
-    fun isRemoteVersionNewer(
-        remoteVersionName: String,
-        remoteVersionCode: Int,
-        currentVersionName: String,
-        currentVersionCode: Int
-    ): Boolean {
-        if (remoteVersionName.isBlank() && remoteVersionCode <= 0) return false
+    fun isRemoteVersionNewer(remoteVersionStr: String, installedVersionStr: String): Boolean {
+        val remoteParts = parseVersionParts(remoteVersionStr)
+        val installedParts = parseVersionParts(installedVersionStr)
 
-        val cleanRemote = extractCleanVersionName(remoteVersionName)
-        val cleanCurrent = extractCleanVersionName(currentVersionName)
-
-        // Equal version names means it is identical
-        if (cleanRemote.equals(cleanCurrent, ignoreCase = true) && cleanRemote.isNotBlank()) {
+        if (remoteParts.isEmpty() || installedParts.isEmpty()) {
             return false
         }
 
-        val remoteParts = cleanRemote.split('.').mapNotNull { it.toIntOrNull() }
-        val currentParts = cleanCurrent.split('.').mapNotNull { it.toIntOrNull() }
-
-        if (remoteParts.isNotEmpty() && currentParts.isNotEmpty()) {
-            val maxLen = maxOf(remoteParts.size, currentParts.size)
-            for (i in 0 until maxLen) {
-                val r = remoteParts.getOrElse(i) { 0 }
-                val c = currentParts.getOrElse(i) { 0 }
-                if (r > c) return true
-                if (r < c) return false
-            }
-            return false
+        val maxLength = maxOf(remoteParts.size, installedParts.size)
+        for (i in 0 until maxLength) {
+            val r = remoteParts.getOrElse(i) { 0 }
+            val inst = installedParts.getOrElse(i) { 0 }
+            if (r > inst) return true
+            if (r < inst) return false
         }
 
-        // Fallback to integer versionCode comparison if semver not present
-        if (remoteVersionCode > 0 && currentVersionCode > 0) {
-            return remoteVersionCode > currentVersionCode
-        }
-
+        // Exact equal version means it is NOT newer
         return false
     }
 

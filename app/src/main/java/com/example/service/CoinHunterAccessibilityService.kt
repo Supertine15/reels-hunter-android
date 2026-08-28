@@ -5,11 +5,13 @@ import android.accessibilityservice.GestureDescription
 import android.content.Intent
 import android.graphics.Path
 import android.graphics.PointF
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.widget.Toast
 import com.example.data.AppPreferences
 import com.example.model.ScrollSettings
 import com.example.model.SwipeDirection
@@ -110,10 +112,36 @@ class CoinHunterAccessibilityService : AccessibilityService() {
                     delay(1000)
                     remaining--
                     _autoStopRemainingSecondsFlow.value = remaining
+
+                    // At 0:05 remaining: Show brief temporary System Toast over active video app
+                    if (remaining == 5L) {
+                        Handler(Looper.getMainLooper()).post {
+                            Toast.makeText(
+                                this@CoinHunterAccessibilityService,
+                                "⏳ Auto-Off in 5 seconds... Locking screen.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 }
                 if (isActive) {
-                    Log.d(TAG, "Auto-Off Timer reached 0:00. Stopping auto-scroll and dismissing floating overlay to conserve battery.")
+                    Log.d(TAG, "Auto-Off Timer reached 0:00. Executing Home, Screen Lock, stopping gestures and floating service.")
+                    
+                    // 1. Stop gesture loop
                     stopAutoScroll()
+
+                    // 2. Minimize foreground app and stop video playback (Home action)
+                    performGlobalAction(GLOBAL_ACTION_HOME)
+
+                    // 3. Wait 500ms delay before locking screen
+                    delay(500)
+
+                    // 4. Turn off and lock the device (Android 9+)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+                    }
+
+                    // 5. Cleanly dismiss floating overlay service
                     FloatingOverlayService.stopService(this@CoinHunterAccessibilityService)
                 }
             }

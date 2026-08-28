@@ -66,7 +66,10 @@ class MainActivity : ComponentActivity() {
             // Automatic startup check to notify the user if a new APK is available for Easy Scroll
             LaunchedEffect(Unit) {
                 try {
-                    val result = AppUpdateManager.checkForUpdates(BuildConfig.VERSION_NAME)
+                    val result = AppUpdateManager.checkForUpdates(
+                        currentVersionCode = BuildConfig.VERSION_CODE,
+                        currentVersionName = BuildConfig.VERSION_NAME
+                    )
                     if (result is UpdateCheckResult.UpdateAvailable && result.updateInfo.isNewer) {
                         updateCheckResult = result
                         showUpdateDialog = true
@@ -77,21 +80,24 @@ class MainActivity : ComponentActivity() {
             fun performManualUpdateCheck() {
                 scope.launch {
                     try {
-                        val result = AppUpdateManager.checkForUpdates(BuildConfig.VERSION_NAME)
+                        val result = AppUpdateManager.checkForUpdates(
+                            currentVersionCode = BuildConfig.VERSION_CODE,
+                            currentVersionName = BuildConfig.VERSION_NAME
+                        )
                         if (result is UpdateCheckResult.UpdateAvailable && result.updateInfo.isNewer) {
                             updateCheckResult = result
                             showUpdateDialog = true
                         } else {
                             Toast.makeText(
                                 this@MainActivity,
-                                "You are using the latest version of Easy Scroll (v${BuildConfig.VERSION_NAME})",
+                                "You are already using the latest version of Easy Scroll!",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
                     } catch (_: Exception) {
                         Toast.makeText(
                             this@MainActivity,
-                            "You are using the latest version of Easy Scroll (v${BuildConfig.VERSION_NAME})",
+                            "You are already using the latest version of Easy Scroll!",
                             Toast.LENGTH_SHORT
                         ).show()
                     }

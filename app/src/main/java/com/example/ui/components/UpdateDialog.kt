@@ -84,7 +84,7 @@ fun UpdateDialog(
                 Text(
                     text = "Version ${update.versionName}",
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     color = RadarGreen
                 )
             }
@@ -106,9 +106,9 @@ fun UpdateDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 140.dp)
+                            .heightIn(max = 130.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                             .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
                             .padding(12.dp)
                             .verticalScroll(rememberScrollState())

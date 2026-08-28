@@ -56,6 +56,15 @@ jobs:
             exit 1
           fi
 
+      - name: Sync app version with this build's release tag
+        run: |
+          NEW_VERSION_CODE="${{ github.run_number }}"
+          NEW_VERSION_NAME="${{ github.run_number }}.${{ github.run_attempt }}"
+          echo "Setting versionCode=$NEW_VERSION_CODE versionName=$NEW_VERSION_NAME"
+          sed -i "s/versionCode = [0-9]\+/versionCode = $NEW_VERSION_CODE/" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"$NEW_VERSION_NAME\"/" app/build.gradle.kts
+          grep -E "versionCode|versionName" app/build.gradle.kts
+
       - name: Build the debug APK
         run: gradle :app:assembleDebug --stacktrace --no-daemon
 

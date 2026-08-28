@@ -2,7 +2,9 @@ package com.example.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
-import android.content.Intent
+import android.view.KeyEvent
+import android.media.AudioManager
+import com.example.MainActivity
 import android.graphics.Path
 import android.graphics.PointF
 import android.os.Build
@@ -113,33 +115,41 @@ class CoinHunterAccessibilityService : AccessibilityService() {
                     remaining--
                     _autoStopRemainingSecondsFlow.value = remaining
 
-                    // At 0:05 remaining: Show brief temporary System Toast over active video app
-                    if (remaining == 5L) {
-                        Handler(Looper.getMainLooper()).post {
-                            Toast.makeText(
-                                this@CoinHunterAccessibilityService,
-                                "⏳ Auto-Off in 5 seconds... Locking screen.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                    // At 0:05 remaining: Show smart warning popup & brief temporary alert
+                    if (remaining <= 5L && remaining > 0L) {
+                        FloatingOverlayService.instance?.showTimeoutWarning(remaining.toInt())
                     }
                 }
                 if (isActive) {
-                    Log.d(TAG, "Auto-Off Timer reached 0:00. Terminating floating overlay, executing Home, and locking screen.")
+                    Log.d(TAG, "Auto-Off Timer reached 0:00. Executing 3-step fail-safe video/battery stop sequence.")
                     
-                    // 1. Stop gesture loop
-                    stopAutoScroll()
+                    // Hide any active warning popup
+                    FloatingOverlayService.instance?.hideTimeoutWarning()
 
-                    // 2. Immediately dismiss and remove floating overlay view from WindowManager & stop foreground service
-                    FloatingOverlayService.stopService(this@CoinHunterAccessibilityService)
+                    // Step 1: Force Media Pause to explicitly freeze video/audio playback
+                    try {
+                        val audioManager = getSystemService(AUDIO_SERVICE) as? AudioManager
+                        audioManager?.dispatchMediaKeyEvent(
+                            KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE)
+                        )
+                        audioManager?.dispatchMediaKeyEvent(
+                            KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PAUSE)
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Media pause key event error", e)
+                    }
 
-                    // 3. Minimize foreground app and stop video playback (Home action)
+                    // Step 2: Minimize to Home Screen (triggers foreground video app onStop/lifecycle pause)
                     performGlobalAction(GLOBAL_ACTION_HOME)
 
-                    // 4. Wait 300ms delay before locking screen
-                    delay(300)
+                    // Step 3: Destroy FloatingOverlayService & cease active auto-scroll
+                    stopAutoScroll()
+                    FloatingOverlayService.stopService(this@CoinHunterAccessibilityService)
 
-                    // 5. Turn off and lock the device (Android 9+)
+                    // Brief settling delay before locking screen
+                    delay(350)
+
+                    // Step 4: Lock screen & trigger System Doze Mode for maximum battery preservation
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
                     }
@@ -180,6 +190,7 @@ class CoinHunterAccessibilityService : AccessibilityService() {
     }
 
     fun stopAutoScroll() {
+        FloatingOverlayService.instance?.hideTimeoutWarning()
         _isAutoScrollingFlow.value = false
         _countdownFlow.value = 0
         autoScrollJob?.cancel()

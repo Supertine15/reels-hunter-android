@@ -13,12 +13,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,12 +46,14 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.HourglassBottom
+import androidx.compose.material.icons.filled.Launch
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -91,13 +94,8 @@ import com.example.R
 import com.example.data.AppPreferences
 import com.example.model.SwipeDirection
 import com.example.ui.theme.CyanAccent
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.EmeraldSuccess
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.RoseAlert
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 
@@ -111,8 +109,17 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
 
     private var windowManager: WindowManager? = null
     private var floatingView: ComposeView? = null
+    private var dismissTargetView: ComposeView? = null
+    private var timeoutWarningView: ComposeView? = null
     private lateinit var windowParams: WindowManager.LayoutParams
+    private var dismissParams: WindowManager.LayoutParams? = null
+    private var warningParams: WindowManager.LayoutParams? = null
     private lateinit var appPreferences: AppPreferences
+
+    private val _isDraggingFlow = MutableStateFlow(false)
+    private val _isHoveringDismissFlow = MutableStateFlow(false)
+    private val _showTimeoutWarningFlow = MutableStateFlow(false)
+    private val _warningSecondsRemainingFlow = MutableStateFlow(5)
 
     companion object {
         private const val CHANNEL_ID = "coinhunter_overlay_channel"
@@ -152,6 +159,8 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         appPreferences = AppPreferences(this)
         startForegroundNotification()
         initOverlayWindow()
+        initDismissTargetWindow()
+        initTimeoutWarningWindow()
         isOverlayShowing = true
     }
 
@@ -213,6 +222,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         }
 
         floatingView = ComposeView(this).apply {
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
             setViewTreeLifecycleOwner(this@FloatingOverlayService)
             setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
             setViewTreeViewModelStoreOwner(this@FloatingOverlayService)
@@ -220,13 +230,49 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
             setContent {
                 MyApplicationTheme(darkTheme = true) {
                     FloatingBarRoot(
+                        onDragStart = {
+                            _isDraggingFlow.value = true
+                            _isHoveringDismissFlow.value = false
+                        },
                         onDragDelta = { dx, dy ->
                             windowParams.x += dx.toInt()
                             windowParams.y += dy.toInt()
                             windowManager?.updateViewLayout(this@apply, windowParams)
+
+                            val metrics = resources.displayMetrics
+                            val screenWidth = metrics.widthPixels
+                            val screenHeight = metrics.heightPixels
+
+                            val inBottomArea = windowParams.y > (screenHeight - 400)
+                            val inCenterArea = kotlin.math.abs(windowParams.x + 50 - (screenWidth / 2)) < (screenWidth * 0.35f)
+
+                            _isHoveringDismissFlow.value = inBottomArea && inCenterArea
+                        },
+                        onDragEnd = {
+                            _isDraggingFlow.value = false
+                            if (_isHoveringDismissFlow.value) {
+                                _isHoveringDismissFlow.value = false
+                                CoinHunterAccessibilityService.instance?.stopAutoScroll()
+                                removeOverlayView()
+                                stopSelf()
+                            } else {
+                                _isHoveringDismissFlow.value = false
+                                val metrics = resources.displayMetrics
+                                val screenWidth = metrics.widthPixels
+                                val screenHeight = metrics.heightPixels
+                                val snapX = if (windowParams.x < screenWidth / 2) 20 else (screenWidth - 150)
+                                windowParams.x = snapX
+                                windowParams.y = windowParams.y.coerceIn(80, screenHeight - 220)
+                                windowManager?.updateViewLayout(this@apply, windowParams)
+                            }
+                        },
+                        onDragCancel = {
+                            _isDraggingFlow.value = false
+                            _isHoveringDismissFlow.value = false
                         },
                         onCloseRequested = {
                             CoinHunterAccessibilityService.instance?.stopAutoScroll()
+                            removeOverlayView()
                             stopSelf()
                         },
                         onOpenAppRequested = {
@@ -248,6 +294,119 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         }
     }
 
+    private fun initDismissTargetWindow() {
+        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        dismissParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutFlag,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            y = 100
+        }
+
+        dismissTargetView = ComposeView(this).apply {
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            setViewTreeLifecycleOwner(this@FloatingOverlayService)
+            setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
+            setViewTreeViewModelStoreOwner(this@FloatingOverlayService)
+
+            setContent {
+                val isDragging by _isDraggingFlow.collectAsState()
+                val isHovering by _isHoveringDismissFlow.collectAsState()
+
+                AnimatedVisibility(
+                    visible = isDragging,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    DismissTargetZone(isHovering = isHovering)
+                }
+            }
+        }
+
+        try {
+            windowManager?.addView(dismissTargetView, dismissParams)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun initTimeoutWarningWindow() {
+        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        warningParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutFlag,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = 120
+        }
+
+        timeoutWarningView = ComposeView(this).apply {
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            setViewTreeLifecycleOwner(this@FloatingOverlayService)
+            setViewTreeSavedStateRegistryOwner(this@FloatingOverlayService)
+            setViewTreeViewModelStoreOwner(this@FloatingOverlayService)
+
+            setContent {
+                val showWarning by _showTimeoutWarningFlow.collectAsState()
+                val secondsRemaining by _warningSecondsRemainingFlow.collectAsState()
+
+                AnimatedVisibility(
+                    visible = showWarning,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    TimeoutWarningPopup(
+                        secondsRemaining = secondsRemaining,
+                        onOpenDashboard = {
+                            hideTimeoutWarning()
+                            val launchIntent = Intent(this@FloatingOverlayService, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            startActivity(launchIntent)
+                        },
+                        onDismiss = {
+                            hideTimeoutWarning()
+                        }
+                    )
+                }
+            }
+        }
+
+        try {
+            windowManager?.addView(timeoutWarningView, warningParams)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun showTimeoutWarning(secondsRemaining: Int) {
+        _warningSecondsRemainingFlow.value = secondsRemaining
+        _showTimeoutWarningFlow.value = true
+    }
+
+    fun hideTimeoutWarning() {
+        _showTimeoutWarningFlow.value = false
+    }
+
     fun removeOverlayView() {
         floatingView?.let { view ->
             try {
@@ -261,6 +420,32 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
             }
         }
         floatingView = null
+
+        dismissTargetView?.let { view ->
+            try {
+                windowManager?.removeViewImmediate(view)
+            } catch (e: Exception) {
+                try {
+                    windowManager?.removeView(view)
+                } catch (e2: Exception) {
+                    // Ignore if already removed
+                }
+            }
+        }
+        dismissTargetView = null
+
+        timeoutWarningView?.let { view ->
+            try {
+                windowManager?.removeViewImmediate(view)
+            } catch (e: Exception) {
+                try {
+                    windowManager?.removeView(view)
+                } catch (e2: Exception) {
+                    // Ignore if already removed
+                }
+            }
+        }
+        timeoutWarningView = null
     }
 
     override fun onDestroy() {
@@ -285,8 +470,145 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
 }
 
 @Composable
+fun TimeoutWarningPopup(
+    secondsRemaining: Int,
+    onOpenDashboard: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { onOpenDashboard() },
+        color = Color(0xFF1E293B).copy(alpha = 0.95f),
+        shape = RoundedCornerShape(20.dp),
+        shadowElevation = 16.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.5.dp,
+            color = Color(0xFFFFB300).copy(alpha = 0.85f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFFB300).copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WarningAmber,
+                    contentDescription = "Warning",
+                    tint = Color(0xFFFFB300),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Timer expiring soon! ($secondsRemaining s)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color.White
+                    )
+                }
+                Text(
+                    text = "Tap to open ReelsHunter & extend time",
+                    fontSize = 11.sp,
+                    color = Color(0xFF94A3B8)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFFB300))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Extend",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 11.sp,
+                    color = Color(0xFF0F172A)
+                )
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Dismiss Warning",
+                    tint = Color(0xFF94A3B8),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DismissTargetZone(isHovering: Boolean) {
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isHovering) 1.18f else 1f,
+        label = "targetScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .padding(bottom = 32.dp)
+            .scale(scale)
+            .clip(RoundedCornerShape(32.dp))
+            .background(
+                if (isHovering) Color(0xFFFF1744).copy(alpha = 0.90f)
+                else Color(0xFF1E293B).copy(alpha = 0.75f)
+            )
+            .border(
+                width = if (isHovering) 2.dp else 1.2.dp,
+                color = if (isHovering) Color.White else Color(0xFFFF5252).copy(alpha = 0.7f),
+                shape = RoundedCornerShape(32.dp)
+            )
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Dismiss Target",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = if (isHovering) "Drop to Close" else "Drag here to close",
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
 fun FloatingBarRoot(
+    onDragStart: () -> Unit,
     onDragDelta: (Float, Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
     onCloseRequested: () -> Unit,
     onOpenAppRequested: () -> Unit,
     preferences: AppPreferences
@@ -301,12 +623,15 @@ fun FloatingBarRoot(
     val currentDirection by preferences.directionFlow.collectAsState()
 
     if (isMinimized) {
-        // Minimized Bubble Pill
+        // Minimized 42dp Bubble
         MinimizedBubble(
             isAutoScrolling = isAutoScrolling,
             countdown = countdown,
             onExpand = { isMinimized = false },
+            onDragStart = onDragStart,
             onDragDelta = onDragDelta,
+            onDragEnd = onDragEnd,
+            onDragCancel = onDragCancel,
             onToggleScroll = {
                 CoinHunterAccessibilityService.instance?.toggleAutoScroll()
             }
@@ -354,7 +679,10 @@ fun FloatingBarRoot(
             onMinimize = { isMinimized = true },
             onClose = onCloseRequested,
             onOpenApp = onOpenAppRequested,
-            onDragDelta = onDragDelta
+            onDragStart = onDragStart,
+            onDragDelta = onDragDelta,
+            onDragEnd = onDragEnd,
+            onDragCancel = onDragCancel
         )
     }
 }
@@ -364,30 +692,42 @@ fun MinimizedBubble(
     isAutoScrolling: Boolean,
     countdown: Int,
     onExpand: () -> Unit,
+    onDragStart: () -> Unit,
     onDragDelta: (Float, Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
     onToggleScroll: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .size(56.dp)
-            .shadow(16.dp, CircleShape)
+            .size(42.dp)
             .clip(CircleShape)
             .background(
                 brush = Brush.verticalGradient(
-                    colors = if (isAutoScrolling) listOf(Color(0xFF7C4DFF), Color(0xFF651FFF))
-                    else listOf(Color(0xFF1E293B), Color(0xFF0F172A))
+                    colors = if (isAutoScrolling) listOf(
+                        Color(0xFF7C4DFF).copy(alpha = 0.6f),
+                        Color(0xFF651FFF).copy(alpha = 0.6f)
+                    ) else listOf(
+                        Color(0xFF1E293B).copy(alpha = 0.6f),
+                        Color(0xFF0F172A).copy(alpha = 0.6f)
+                    )
                 )
             )
             .border(
-                width = 2.dp,
-                color = if (isAutoScrolling) Color(0xFF00E676) else Color(0xFF334155),
+                width = 1.5.dp,
+                color = if (isAutoScrolling) Color(0xFF00E676).copy(alpha = 0.85f) else Color(0xFF334155).copy(alpha = 0.7f),
                 shape = CircleShape
             )
             .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    onDragDelta(dragAmount.x, dragAmount.y)
-                }
+                detectDragGestures(
+                    onDragStart = { onDragStart() },
+                    onDragEnd = { onDragEnd() },
+                    onDragCancel = { onDragCancel() },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        onDragDelta(dragAmount.x, dragAmount.y)
+                    }
+                )
             }
             .clickable { onExpand() },
         contentAlignment = Alignment.Center
@@ -401,11 +741,11 @@ fun MinimizedBubble(
                     text = "${countdown}s",
                     color = Color.White,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 14.sp
+                    fontSize = 12.sp
                 )
                 Box(
                     modifier = Modifier
-                        .size(4.dp)
+                        .size(3.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF00E676))
                 )
@@ -414,7 +754,7 @@ fun MinimizedBubble(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = "Resume",
                     tint = Color(0xFF00E676),
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -436,7 +776,10 @@ fun ExpandedFloatingBar(
     onMinimize: () -> Unit,
     onClose: () -> Unit,
     onOpenApp: () -> Unit,
-    onDragDelta: (Float, Float) -> Unit
+    onDragStart: () -> Unit,
+    onDragDelta: (Float, Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -458,10 +801,15 @@ fun ExpandedFloatingBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            onDragDelta(dragAmount.x, dragAmount.y)
-                        }
+                        detectDragGestures(
+                            onDragStart = { onDragStart() },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragCancel() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDragDelta(dragAmount.x, dragAmount.y)
+                            }
+                        )
                     },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -670,3 +1018,4 @@ fun ExpandedFloatingBar(
         }
     }
 }
+

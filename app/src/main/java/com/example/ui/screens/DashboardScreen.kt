@@ -492,15 +492,33 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Text(
-                        text = "Auto-Off Timer",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        Text(
+                            text = "Auto-Off Timer",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isAutoScrolling && autoStopRemainingSeconds > 0) {
+                                val hrs = autoStopRemainingSeconds / 3600
+                                val mins = (autoStopRemainingSeconds % 3600) / 60
+                                val secs = autoStopRemainingSeconds % 60
+                                if (hrs > 0) {
+                                    String.format("Active: %d:%02d:%02d remaining", hrs, mins, secs)
+                                } else {
+                                    String.format("Active: %02d:%02d remaining", mins, secs)
+                                }
+                            } else {
+                                "Off (Default: 5 min)"
+                            },
+                            fontSize = 12.sp,
+                            color = if (isAutoScrolling && autoStopRemainingSeconds > 0) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                // Timer Stepper: [-] 1 hr [+] (15m to 600m)
+                // Timer Stepper: [-] 5 min / 1 hr / 1 hr 5 min [+] (5m step, min 5m, unlimited max)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -510,18 +528,18 @@ fun DashboardScreen(
                 ) {
                     IconButton(
                         onClick = {
-                            if (autoStopMinutes > 15) {
-                                val newDuration = autoStopMinutes - 15
+                            if (autoStopMinutes > 5) {
+                                val newDuration = autoStopMinutes - 5
                                 preferences.autoStopMinutes = newDuration
                             }
                         },
-                        enabled = autoStopMinutes > 15,
+                        enabled = autoStopMinutes > 5,
                         modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Remove,
                             contentDescription = "Decrease Timer",
-                            tint = if (autoStopMinutes > 15) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                            tint = if (autoStopMinutes > 5) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -530,8 +548,8 @@ fun DashboardScreen(
                     val mins = autoStopMinutes % 60
                     val durationText = when {
                         hours == 0 -> "$mins min"
-                        mins == 0 -> if (hours == 1) "1 hr" else "$hours hrs"
-                        else -> "${hours}h ${mins}m"
+                        mins == 0 -> if (hours == 1) "1 hr" else "$hours hr"
+                        else -> if (hours == 1) "1 hr $mins min" else "$hours hr $mins min"
                     }
 
                     Text(
@@ -544,18 +562,16 @@ fun DashboardScreen(
 
                     IconButton(
                         onClick = {
-                            if (autoStopMinutes < 600) {
-                                val newDuration = autoStopMinutes + 15
-                                preferences.autoStopMinutes = newDuration
-                            }
+                            val newDuration = autoStopMinutes + 5
+                            preferences.autoStopMinutes = newDuration
                         },
-                        enabled = autoStopMinutes < 600,
+                        enabled = true,
                         modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Increase Timer",
-                            tint = if (autoStopMinutes < 600) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(16.dp)
                         )
                     }

@@ -29,7 +29,7 @@ data class ScrollSettings(
         const val DEFAULT_INTERVAL = 8
         const val DEFAULT_DURATION_MS = 320L
         const val DEFAULT_DISTANCE_PERCENT = 65
-        const val DEFAULT_AUTO_STOP_MINUTES = 60
+        const val DEFAULT_AUTO_STOP_MINUTES = 5
 
         fun getUniversalDefaults(): ScrollSettings {
             return ScrollSettings(

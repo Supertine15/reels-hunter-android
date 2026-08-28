@@ -105,7 +105,7 @@ fun AboutScreen(
                 )
 
                 Text(
-                    text = "Version 1.0.1 • Production Build",
+                    text = "Version ${com.example.BuildConfig.VERSION_NAME} • Production Build",
                     fontSize = 12.sp,
                     color = RadarGreen,
                     fontWeight = FontWeight.Bold,

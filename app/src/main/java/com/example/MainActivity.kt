@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.example.data.AppPreferences
 import com.example.model.AppTab
@@ -26,12 +27,16 @@ import com.example.service.CoinHunterAccessibilityService
 import com.example.service.FloatingOverlayService
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
+import com.example.ui.components.UpdateDialog
 import com.example.ui.screens.AboutScreen
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.PlatformsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.util.AppUpdateManager
 import com.example.util.PermissionHelper
+import com.example.util.UpdateCheckResult
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -54,6 +59,30 @@ class MainActivity : ComponentActivity() {
             val isServiceActive by CoinHunterAccessibilityService.serviceConnectedFlow.collectAsState()
             val isAutoScrolling by CoinHunterAccessibilityService.isAutoScrollingFlow.collectAsState()
 
+            val scope = rememberCoroutineScope()
+            var updateCheckResult by remember { mutableStateOf<UpdateCheckResult>(UpdateCheckResult.Idle) }
+            var showUpdateDialog by remember { mutableStateOf(false) }
+
+            // Automatic startup check to notify the user if a new APK is available for Easy Scroll
+            LaunchedEffect(Unit) {
+                try {
+                    val result = AppUpdateManager.checkForUpdates()
+                    if (result is UpdateCheckResult.UpdateAvailable) {
+                        updateCheckResult = result
+                        showUpdateDialog = true
+                    }
+                } catch (_: Exception) {}
+            }
+
+            fun performManualUpdateCheck() {
+                showUpdateDialog = true
+                updateCheckResult = UpdateCheckResult.Checking
+                scope.launch {
+                    val result = AppUpdateManager.checkForUpdates()
+                    updateCheckResult = result
+                }
+            }
+
             MyApplicationTheme(darkTheme = isDarkTheme) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -70,6 +99,9 @@ class MainActivity : ComponentActivity() {
                             onOpenPermissions = {
                                 currentTab = AppTab.DASHBOARD
                                 triggerPermissionDialogState.value = true
+                            },
+                            onCheckUpdates = {
+                                performManualUpdateCheck()
                             }
                         )
                     },
@@ -114,8 +146,23 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             AppTab.ABOUT -> {
-                                AboutScreen()
+                                AboutScreen(
+                                    onCheckUpdates = {
+                                        performManualUpdateCheck()
+                                    }
+                                )
                             }
+                        }
+
+                        // In-App GitHub Update & Release Dialog
+                        if (showUpdateDialog) {
+                            UpdateDialog(
+                                result = updateCheckResult,
+                                onDismiss = {
+                                    showUpdateDialog = false
+                                    updateCheckResult = UpdateCheckResult.Idle
+                                }
+                            )
                         }
                     }
                 }

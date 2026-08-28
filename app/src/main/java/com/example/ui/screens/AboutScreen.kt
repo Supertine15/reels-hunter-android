@@ -59,8 +59,13 @@ import com.example.ui.theme.RadarGreen
 import com.example.ui.theme.RadarGreenBright
 import com.example.util.ChineseRomHelper
 
+import androidx.compose.material.icons.filled.SystemUpdate
+import com.example.util.AppConstants
+
 @Composable
-fun AboutScreen() {
+fun AboutScreen(
+    onCheckUpdates: () -> Unit = {}
+) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
@@ -145,16 +150,12 @@ fun AboutScreen() {
                     // GitHub Link
                     OutlinedButton(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Supertine15/reels-hunter-android")).apply {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(AppConstants.GITHUB_REPO_URL)).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
                             try {
                                 context.startActivity(intent)
-                            } catch (e: ActivityNotFoundException) {
-                                // Handled gracefully if no browser or app is available
-                            } catch (_: Exception) {
-                                // Fallback catch
-                            }
+                            } catch (_: Exception) {}
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
@@ -171,33 +172,22 @@ fun AboutScreen() {
                         }
                     }
 
-                    // Telegram Community
+                    // Check for Updates
                     Button(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/reelshunterapp")).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            try {
-                                context.startActivity(intent)
-                            } catch (e: ActivityNotFoundException) {
-                                // Handled gracefully if Telegram or browser is unavailable
-                            } catch (_: Exception) {
-                                // Fallback catch
-                            }
-                        },
+                        onClick = onCheckUpdates,
                         colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.Send,
+                                imageVector = Icons.Default.SystemUpdate,
                                 contentDescription = null,
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Telegram", fontSize = 13.sp, color = Color.White)
+                            Text("Updates", fontSize = 13.sp, color = Color.White)
                         }
                     }
                 }

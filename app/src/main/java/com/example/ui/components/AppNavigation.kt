@@ -134,7 +134,8 @@ fun AppTopBar(
     isServiceActive: Boolean,
     isAutoScrolling: Boolean,
     allPermissionsGranted: Boolean = true,
-    onOpenPermissions: () -> Unit = {}
+    onOpenPermissions: () -> Unit = {},
+    onCheckUpdates: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
@@ -313,10 +314,7 @@ fun AppTopBar(
                         },
                         onClick = {
                             menuExpanded = false
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ReelsHunter/AutoScroller")).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            try { context.startActivity(intent) } catch (_: Exception) {}
+                            onCheckUpdates()
                         }
                     )
                 }

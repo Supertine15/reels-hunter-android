@@ -125,24 +125,24 @@ class CoinHunterAccessibilityService : AccessibilityService() {
                     }
                 }
                 if (isActive) {
-                    Log.d(TAG, "Auto-Off Timer reached 0:00. Executing Home, Screen Lock, stopping gestures and floating service.")
+                    Log.d(TAG, "Auto-Off Timer reached 0:00. Terminating floating overlay, executing Home, and locking screen.")
                     
                     // 1. Stop gesture loop
                     stopAutoScroll()
 
-                    // 2. Minimize foreground app and stop video playback (Home action)
+                    // 2. Immediately dismiss and remove floating overlay view from WindowManager & stop foreground service
+                    FloatingOverlayService.stopService(this@CoinHunterAccessibilityService)
+
+                    // 3. Minimize foreground app and stop video playback (Home action)
                     performGlobalAction(GLOBAL_ACTION_HOME)
 
-                    // 3. Wait 500ms delay before locking screen
-                    delay(500)
+                    // 4. Wait 300ms delay before locking screen
+                    delay(300)
 
-                    // 4. Turn off and lock the device (Android 9+)
+                    // 5. Turn off and lock the device (Android 9+)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
                     }
-
-                    // 5. Cleanly dismiss floating overlay service
-                    FloatingOverlayService.stopService(this@CoinHunterAccessibilityService)
                 }
             }
         } else {

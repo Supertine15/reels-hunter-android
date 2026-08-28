@@ -120,6 +120,9 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         var isOverlayShowing: Boolean = false
             private set
 
+        var instance: FloatingOverlayService? = null
+            private set
+
         fun startService(context: Context) {
             val intent = Intent(context, FloatingOverlayService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -130,6 +133,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         }
 
         fun stopService(context: Context) {
+            instance?.removeOverlayView()
             val intent = Intent(context, FloatingOverlayService::class.java)
             context.stopService(intent)
         }
@@ -139,6 +143,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         savedStateRegistryController.performRestore(Bundle())
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
@@ -243,6 +248,21 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         }
     }
 
+    fun removeOverlayView() {
+        floatingView?.let { view ->
+            try {
+                windowManager?.removeViewImmediate(view)
+            } catch (e: Exception) {
+                try {
+                    windowManager?.removeView(view)
+                } catch (e2: Exception) {
+                    // Ignore if already removed
+                }
+            }
+        }
+        floatingView = null
+    }
+
     override fun onDestroy() {
         isOverlayShowing = false
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
@@ -250,14 +270,16 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         store.clear()
 
-        floatingView?.let {
-            try {
-                windowManager?.removeView(it)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+        removeOverlayView()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
         }
-        floatingView = null
+
+        instance = null
         super.onDestroy()
     }
 }

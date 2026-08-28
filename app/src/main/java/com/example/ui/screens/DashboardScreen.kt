@@ -467,7 +467,7 @@ fun DashboardScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -477,7 +477,7 @@ fun DashboardScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(46.dp)
+                            .size(42.dp)
                             .clip(CircleShape)
                             .background(CyanAccent.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
@@ -486,36 +486,18 @@ fun DashboardScreen(
                             imageVector = Icons.Default.HourglassBottom,
                             contentDescription = "Auto-Off Timer",
                             tint = CyanAccent,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(14.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                    Column {
-                        Text(
-                            text = "Auto-Off Timer",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = if (isAutoScrolling && autoStopRemainingSeconds > 0) {
-                                val hrs = autoStopRemainingSeconds / 3600
-                                val mins = (autoStopRemainingSeconds % 3600) / 60
-                                val secs = autoStopRemainingSeconds % 60
-                                if (hrs > 0) {
-                                    String.format("Active: %d:%02d:%02d remaining", hrs, mins, secs)
-                                } else {
-                                    String.format("Active: %02d:%02d remaining", mins, secs)
-                                }
-                            } else {
-                                "Stops scroll & closes bar when timer hits 0:00"
-                            },
-                            fontSize = 12.sp,
-                            color = if (isAutoScrolling && autoStopRemainingSeconds > 0) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = "Auto-Off Timer",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
 
                 // Timer Stepper: [-] 1 hr [+] (15m to 600m)

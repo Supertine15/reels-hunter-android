@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -144,10 +145,16 @@ fun AboutScreen() {
                     // GitHub Link
                     OutlinedButton(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ReelsHunter/AutoScroller")).apply {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Supertine15/reels-hunter-android")).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
-                            try { context.startActivity(intent) } catch (_: Exception) {}
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: ActivityNotFoundException) {
+                                // Handled gracefully if no browser or app is available
+                            } catch (_: Exception) {
+                                // Fallback catch
+                            }
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
@@ -167,10 +174,16 @@ fun AboutScreen() {
                     // Telegram Community
                     Button(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/ReelsHunterAutoScroll")).apply {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/reelshunterapp")).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
-                            try { context.startActivity(intent) } catch (_: Exception) {}
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: ActivityNotFoundException) {
+                                // Handled gracefully if Telegram or browser is unavailable
+                            } catch (_: Exception) {
+                                // Fallback catch
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary),
                         modifier = Modifier.weight(1f),

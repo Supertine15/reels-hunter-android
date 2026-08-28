@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "ReelsHunter"
+rootProject.name = "Easy Scroll"
 
 include(":app")

@@ -53,13 +53,13 @@ object ChineseRomHelper {
 
     fun getAutostartInstructions(): String {
         return when (getManufacturer()) {
-            Manufacturer.XIAOMI -> "1. Open Security App -> Manage Apps -> Permissions -> Autostart\n2. Enable 'CoinHunter'\n3. Battery Saver: Set to 'No Restrictions'"
-            Manufacturer.OPPO -> "1. Settings -> App Management -> Auto-launch apps\n2. Turn ON toggle for CoinHunter\n3. Allow Background Activity"
-            Manufacturer.VIVO -> "1. Settings -> Battery -> High background power consumption\n2. Allow 'CoinHunter'\n3. Enable Autostart in i Manager"
-            Manufacturer.HUAWEI -> "1. Settings -> Battery -> App launch\n2. Find CoinHunter, disable 'Manage automatically', enable 'Auto-launch', 'Secondary launch', 'Run in background'"
-            Manufacturer.HONOR -> "1. Settings -> Apps -> App launch -> Set CoinHunter to Manual and allow all permissions"
-            Manufacturer.SAMSUNG -> "1. Settings -> Battery & device care -> Battery -> Background usage limits -> Add CoinHunter to 'Never sleeping apps'"
-            else -> "Ensure CoinHunter is allowed to run in the background and not killed by system battery optimization."
+            Manufacturer.XIAOMI -> "1. Open Security App -> Manage Apps -> Permissions -> Autostart\n2. Enable 'Easy Scroll'\n3. Battery Saver: Set to 'No Restrictions'"
+            Manufacturer.OPPO -> "1. Settings -> App Management -> Auto-launch apps\n2. Turn ON toggle for Easy Scroll\n3. Allow Background Activity"
+            Manufacturer.VIVO -> "1. Settings -> Battery -> High background power consumption\n2. Allow 'Easy Scroll'\n3. Enable Autostart in i Manager"
+            Manufacturer.HUAWEI -> "1. Settings -> Battery -> App launch\n2. Find Easy Scroll, disable 'Manage automatically', enable 'Auto-launch', 'Secondary launch', 'Run in background'"
+            Manufacturer.HONOR -> "1. Settings -> Apps -> App launch -> Set Easy Scroll to Manual and allow all permissions"
+            Manufacturer.SAMSUNG -> "1. Settings -> Battery & device care -> Battery -> Background usage limits -> Add Easy Scroll to 'Never sleeping apps'"
+            else -> "Ensure Easy Scroll is allowed to run in the background and not killed by system battery optimization."
         }
     }
 

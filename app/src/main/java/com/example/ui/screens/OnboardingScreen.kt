@@ -95,8 +95,8 @@ enum class PermissionStep(
         icon = Icons.Default.Accessibility,
         instructions = listOf(
             "Tap 'Open Accessibility Settings' below.",
-            "Find 'ReelsHunter' in Installed / Downloaded Services.",
-            "Turn ON 'Use ReelsHunter' switch and allow permission."
+            "Find 'Easy Scroll' in Installed / Downloaded Services.",
+            "Turn ON 'Use Easy Scroll' switch and allow permission."
         )
     ),
     OVERLAY(
@@ -105,7 +105,7 @@ enum class PermissionStep(
         icon = Icons.Default.Layers,
         instructions = listOf(
             "Tap 'Open Overlay Settings' below.",
-            "Locate 'ReelsHunter' in the app list.",
+            "Locate 'Easy Scroll' in the app list.",
             "Toggle 'Allow display over other apps' to ON."
         )
     ),
@@ -230,7 +230,7 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // ReelsHunter Logo & Friendly Header
+            // Easy Scroll Logo & Friendly Header
             CyberRadarIcon(
                 isActive = true,
                 color = RadarGreen,
@@ -240,7 +240,7 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Welcome to ReelsHunter",
+                text = "Welcome to Easy Scroll",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -449,9 +449,9 @@ fun OnboardingScreen(
                         Text(
                             text = "Certain device brands (Xiaomi / MIUI, Huawei / EMUI, Vivo, Oppo) aggressively close background services after a few minutes.\n\n" +
                                     "To ensure uninterrupted auto-scrolling:\n" +
-                                    "1. Enable 'Autostart' for ReelsHunter.\n" +
+                                    "1. Enable 'Autostart' for Easy Scroll.\n" +
                                     "2. Set Battery Saver to 'No Restrictions'.\n" +
-                                    "3. Lock ReelsHunter in the recent apps tray.",
+                                    "3. Lock Easy Scroll in the recent apps tray.",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp

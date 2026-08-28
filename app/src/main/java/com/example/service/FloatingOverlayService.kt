@@ -168,10 +168,10 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "CoinHunter Floating Bar",
+                "Easy Scroll Floating Bar",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Active overlay control bar for CoinHunter auto-scroller"
+                description = "Active overlay control bar for Easy Scroll auto-scroller"
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
@@ -188,7 +188,7 @@ class FloatingOverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, S
         )
 
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("CoinHunter Floating Controller")
+            .setContentTitle("Easy Scroll Floating Controller")
             .setContentText("Auto-scroller floating bar is active on screen")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
@@ -524,7 +524,7 @@ fun TimeoutWarningPopup(
                     )
                 }
                 Text(
-                    text = "Tap to open ReelsHunter & extend time",
+                    text = "Tap to open Easy Scroll & extend time",
                     fontSize = 11.sp,
                     color = Color(0xFF94A3B8)
                 )
@@ -796,7 +796,7 @@ fun ExpandedFloatingBar(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header Row: Drag Handle, Title "ReelsHunter", Minimize, Close
+            // Header Row: Drag Handle, Title "Easy Scroll", Minimize, Close
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -836,14 +836,14 @@ fun ExpandedFloatingBar(
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.img_app_logo),
-                            contentDescription = "ReelsHunter Logo",
+                            contentDescription = "Easy Scroll Logo",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "ReelsHunter",
+                        text = "Easy Scroll",
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                         color = Color.White

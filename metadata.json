@@ -1,5 +1,5 @@
 {
-  "name": "ReelsHunter",
+  "name": "Easy Scroll",
   "description": "Smart automated video scroller and gesture engine for Instagram Reels, TikTok, YouTube Shorts, and short video feeds with radar dial controls, customizable speed, and floating overlay.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

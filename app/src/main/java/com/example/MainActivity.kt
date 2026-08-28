@@ -135,7 +135,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startAutoScrollAndMinimize() {
         if (!PermissionHelper.isAccessibilityGranted(this)) {
-            Toast.makeText(this, "Please enable ReelsHunter Accessibility Service.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please enable Easy Scroll Accessibility Service.", Toast.LENGTH_SHORT).show()
             PermissionHelper.openAccessibilitySettings(this)
             return
         }

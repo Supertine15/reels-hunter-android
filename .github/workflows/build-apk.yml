@@ -47,7 +47,7 @@ jobs:
         run: |
           if [ ! -f "./debug.keystore" ]; then
             echo "Generating temporary debug keystore..."
-            keytool -genkey -v -keystore ./debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Reels Hunter, O=Reels Hunter, C=US"
+            keytool -genkey -v -keystore ./debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Easy Scroll, O=Easy Scroll, C=US"
           else
             echo "Debug keystore already exists."
           fi
@@ -70,14 +70,14 @@ jobs:
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: reels-hunter-debug-apk
+          name: easy-scroll-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Prepare APK release asset
         id: prepare_release
         run: |
           TEMP_DIR=$(mktemp -d)
-          ASSET_NAME="reels-hunter-v${{ github.run_number }}.apk"
+          ASSET_NAME="easy-scroll-v${{ github.run_number }}.apk"
           cp "app/build/outputs/apk/debug/app-debug.apk" "$TEMP_DIR/$ASSET_NAME"
           echo "asset_path=$TEMP_DIR/$ASSET_NAME" >> "$GITHUB_OUTPUT"
           echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
@@ -88,8 +88,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG_NAME="reels-hunter-v${{ github.run_number }}.${{ github.run_attempt }}"
-          RELEASE_TITLE="Reels Hunter Build #${{ github.run_number }}"
+          TAG_NAME="easy-scroll-v${{ github.run_number }}.${{ github.run_attempt }}"
+          RELEASE_TITLE="Easy Scroll Build #${{ github.run_number }}"
           ASSET_PATH="${{ steps.prepare_release.outputs.asset_path }}"
           
           gh release create "$TAG_NAME" "$ASSET_PATH" \
@@ -97,7 +97,7 @@ jobs:
             --title "$RELEASE_TITLE" \
             --latest \
             --notes "$(cat << 'EOF'
-          ## App Name: Reels Hunter
+          ## App Name: Easy Scroll
           Automatically generated build by GitHub Actions.
           * **Run number**: ${{ github.run_number }}
           * **Source commit**: ${{ github.sha }}
@@ -106,11 +106,11 @@ jobs:
 
       - name: Report APK download result
         run: |
-          echo "### 🚀 Reels Hunter Build & Release Report" >> $GITHUB_STEP_SUMMARY
-          echo "- **App Name:** Reels Hunter" >> $GITHUB_STEP_SUMMARY
-          echo "- **Artifact Name:** \`reels-hunter-debug-apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Easy Scroll Build & Release Report" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Name:** Easy Scroll" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifact Name:** \`easy-scroll-debug-apk\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Release Asset:** \`${{ steps.prepare_release.outputs.asset_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Release Tag:** \`reels-hunter-v${{ github.run_number }}.${{ github.run_attempt }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Tag:** \`easy-scroll-v${{ github.run_number }}.${{ github.run_attempt }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.create_release.outcome }}" = "success" ]; then

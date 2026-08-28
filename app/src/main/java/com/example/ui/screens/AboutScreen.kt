@@ -93,14 +93,14 @@ fun AboutScreen() {
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "ReelsHunter",
+                    text = "Easy Scroll",
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 22.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
-                    text = "Version 1.0.0 • Production Build",
+                    text = "Version 1.0.1 • Production Build",
                     fontSize = 12.sp,
                     color = RadarGreen,
                     fontWeight = FontWeight.Bold,

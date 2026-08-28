@@ -35,6 +35,8 @@ object PermissionHelper {
             if (id.equals(expectedServiceId, ignoreCase = true) ||
                 id.equals(expectedServiceShortId, ignoreCase = true) ||
                 id.contains("CoinHunterAccessibilityService", ignoreCase = true) ||
+                id.contains("Easy Scroll", ignoreCase = true) ||
+                id.contains("EasyScroll", ignoreCase = true) ||
                 id.contains("ReelsHunter", ignoreCase = true)
             ) {
                 return true
@@ -46,7 +48,10 @@ object PermissionHelper {
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: ""
-        return settingValue.contains("CoinHunterAccessibilityService") || settingValue.contains("ReelsHunter")
+        return settingValue.contains("CoinHunterAccessibilityService") ||
+                settingValue.contains("EasyScroll") ||
+                settingValue.contains("Easy Scroll") ||
+                settingValue.contains("ReelsHunter")
     }
 
     fun isOverlayGranted(context: Context): Boolean {

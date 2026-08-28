@@ -2,7 +2,7 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ReelsHunter Cyber Radar Neon & Royal Purple Palette
+// Easy Scroll Cyber Radar Neon & Royal Purple Palette
 val RadarGreen = Color(0xFF00E676)
 val RadarGreenBright = Color(0xFF69F0AE)
 val RadarGreenDark = Color(0xFF00C853)

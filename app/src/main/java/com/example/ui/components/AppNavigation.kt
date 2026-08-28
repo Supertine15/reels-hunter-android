@@ -117,7 +117,7 @@ fun CyberRadarIcon(
     ) {
         Image(
             painter = painterResource(id = R.drawable.img_app_logo),
-            contentDescription = "ReelsHunter Logo",
+            contentDescription = "Easy Scroll Logo",
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape),
@@ -155,7 +155,7 @@ fun AppTopBar(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "ReelsHunter",
+                    text = "Easy Scroll",
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 20.sp,
                     letterSpacing = 0.5.sp,
